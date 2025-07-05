@@ -43,38 +43,53 @@ export default function Home() {
   }, [previews]);
 
   return (
-    <main className="flex flex-col items-center p-4 gap-4">
-      <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4">
-        <input
-          id="file-input"
-          type="file"
-          multiple
-          accept="image/*"
-          onChange={handleFilesChange}
-          className="hidden"
-        />
-        <label htmlFor="file-input">
-          <Button variant="contained" component="span">
-            Choose Images
-          </Button>
-        </label>
-        <Button type="submit" variant="contained">
-          Create HDR
-        </Button>
-      </form>
-      {previews.length > 0 && (
-        <div className="flex gap-2 flex-wrap">
-          {previews.map((src) => (
-            <img key={src} src={src} className="h-32 object-cover rounded" />
-          ))}
+    <main className="flex p-4 gap-4">
+      <form onSubmit={handleSubmit} className="flex w-full gap-4">
+        {/* Left column: file input and previews */}
+        <div className="flex flex-col items-start gap-4 w-1/3">
+          <input
+            id="file-input"
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={handleFilesChange}
+            className="hidden"
+          />
+          <label htmlFor="file-input">
+            <Button variant="contained" component="span">
+              Select Images
+            </Button>
+          </label>
+          {previews.length > 0 && (
+            <div className="grid grid-cols-2 gap-2">
+              {previews.map((src) => (
+                <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
+              ))}
+            </div>
+          )}
         </div>
-      )}
-      {loading && <p>Processing...</p>}
-      {resultUrl && (
-        <a href={resultUrl} download="hdr_result.jpg" className="underline text-blue-600">
-          Download Result
-        </a>
-      )}
+
+        {/* Middle column: placeholder settings */}
+        <div className="flex flex-col items-center justify-start flex-1 gap-4">
+          <h2 className="text-lg font-semibold">Settings</h2>
+        </div>
+
+        {/* Right column: create button and result */}
+        <div className="flex flex-col items-end gap-4 w-1/3">
+          <Button type="submit" variant="contained">
+            Create HDR
+          </Button>
+          {loading && <p>Processing...</p>}
+          {resultUrl && (
+            <div className="flex flex-col items-end gap-2">
+              <img src={resultUrl} className="w-48 rounded" />
+              <a href={resultUrl} download="hdr_result.jpg">
+                <Button variant="outlined">Download Result</Button>
+              </a>
+            </div>
+          )}
+        </div>
+      </form>
     </main>
   );
 }
