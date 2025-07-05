@@ -29,10 +29,10 @@ export default function Home() {
     if (!files || files.length === 0) return;
     const formData = new FormData();
     Array.from(files).forEach((f) => formData.append("images", f));
-    formData.append("autoAlign", autoAlign ? "1" : "0");
-    formData.append("antiGhost", antiGhost ? "1" : "0");
-    formData.append("contrast", contrast.toString());
-    formData.append("saturation", saturation.toString());
+      formData.append("autoAlign", autoAlign ? "1" : "0");
+      formData.append("antiGhost", antiGhost ? "1" : "0");
+      formData.append("contrast", (2 - contrast).toString());
+      formData.append("saturation", (2 - saturation).toString());
     setLoading(true);
     setResultUrl(null);
     const res = await fetch("/api/process", { method: "POST", body: formData });
