@@ -3,10 +3,10 @@ from pathlib import Path
 import datetime
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.append(str(ROOT))
+sys.path.append(str(ROOT.parent))
 
-from find_and_merge_aeb import group_images_by_datetime
-import find_and_merge_aeb
+from HDR_Compositor.find_and_merge_aeb import group_images_by_datetime
+import HDR_Compositor.find_and_merge_aeb as find_and_merge_aeb
 
 
 def test_group_images_by_datetime(monkeypatch):

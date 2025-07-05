@@ -4,10 +4,14 @@ import numpy as np
 import cv2
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.append(str(ROOT))
+sys.path.append(str(ROOT.parent))
 
-from hdr_utils import get_medium_exposure_image, enhance_image, tonemap_mantiuk
-from find_and_merge_aeb import create_hdr
+from HDR_Compositor.hdr_utils import (
+    get_medium_exposure_image,
+    enhance_image,
+    tonemap_mantiuk,
+)
+from HDR_Compositor.find_and_merge_aeb import create_hdr
 
 
 def test_get_medium_exposure_image():

@@ -2,12 +2,20 @@ import sys
 import os
 import cv2
 import numpy as np
-from find_and_merge_aeb import (
-    find_aeb_images_and_exposure_times_from_list,
-    load_images,
-    create_hdr,
-)
-from hdr_utils import get_medium_exposure_image, tonemap_mantiuk
+try:  # allow usage both as script and module
+    from .find_and_merge_aeb import (
+        find_aeb_images_and_exposure_times_from_list,
+        load_images,
+        create_hdr,
+    )
+    from .hdr_utils import get_medium_exposure_image, tonemap_mantiuk
+except ImportError:  # pragma: no cover - fallback for direct execution
+    from find_and_merge_aeb import (
+        find_aeb_images_and_exposure_times_from_list,
+        load_images,
+        create_hdr,
+    )
+    from hdr_utils import get_medium_exposure_image, tonemap_mantiuk
 
 def main():
     if len(sys.argv) < 3:

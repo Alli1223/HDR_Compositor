@@ -3,12 +3,20 @@ import cv2
 import numpy as np
 import dearpygui.dearpygui as dpg
 
-from find_and_merge_aeb import (
-    find_aeb_images_and_exposure_times_from_list,
-    load_images,
-    create_hdr,
-)
-from hdr_utils import get_medium_exposure_image, tonemap_mantiuk
+try:  # support running as part of a package or as a script
+    from .find_and_merge_aeb import (
+        find_aeb_images_and_exposure_times_from_list,
+        load_images,
+        create_hdr,
+    )
+    from .hdr_utils import get_medium_exposure_image, tonemap_mantiuk
+except ImportError:  # pragma: no cover - fallback for direct execution
+    from find_and_merge_aeb import (
+        find_aeb_images_and_exposure_times_from_list,
+        load_images,
+        create_hdr,
+    )
+    from hdr_utils import get_medium_exposure_image, tonemap_mantiuk
 
 class HDRGui:
     def __init__(self):

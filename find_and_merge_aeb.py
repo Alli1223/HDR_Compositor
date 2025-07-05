@@ -4,7 +4,10 @@ import sys
 import cv2
 import numpy as np
 from datetime import datetime, timedelta
-from hdr_utils import get_medium_exposure_image, enhance_image
+try:  # support running as a script or a package module
+    from .hdr_utils import get_medium_exposure_image, enhance_image
+except ImportError:  # pragma: no cover - fallback for direct execution
+    from hdr_utils import get_medium_exposure_image, enhance_image
 
 def find_aeb_images(directory):
     aeb_images = []
