@@ -23,8 +23,8 @@ def main():
     parser.add_argument("paths", nargs="+", help="input images followed by output path")
     parser.add_argument("--align", action="store_true", help="auto align images")
     parser.add_argument("--deghost", action="store_true", help="apply anti-ghosting")
-    parser.add_argument("--contrast", type=float, default=0.7, help="tone mapping contrast scale")
-    parser.add_argument("--saturation", type=float, default=1.6, help="tone mapping saturation")
+    parser.add_argument("--contrast", type=float, default=1.0, help="tone mapping contrast scale")
+    parser.add_argument("--saturation", type=float, default=1.0, help="tone mapping saturation")
     args = parser.parse_args()
 
     if len(args.paths) < 2:

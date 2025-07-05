@@ -10,8 +10,8 @@ export default function Home() {
   const [previews, setPreviews] = useState<string[]>([]);
   const [autoAlign, setAutoAlign] = useState(false);
   const [antiGhost, setAntiGhost] = useState(false);
-  const [contrast, setContrast] = useState(0.7);
-  const [saturation, setSaturation] = useState(1.6);
+  const [contrast, setContrast] = useState(1.0);
+  const [saturation, setSaturation] = useState(1.0);
 
   const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files;

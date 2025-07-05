@@ -35,8 +35,8 @@ def tonemap_mantiuk(
     hdr_image: np.ndarray,
     reference_image: Optional[np.ndarray] = None,
     *,
-    saturation: float = 1.6,
-    contrast: float = 0.7,
+    saturation: float = 1.0,
+    contrast: float = 1.0,
 ) -> np.ndarray:
     """Tonemap an HDR image using Mantiuk algorithm and enhance the result."""
     tonemap = cv2.createTonemapMantiuk(gamma=1.0, scale=contrast, saturation=saturation)

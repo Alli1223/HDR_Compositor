@@ -115,8 +115,8 @@ def create_hdr(
 
 def save_hdr_image(hdr_image, save_path, group_index, images=None, exposure_times=None):
     tonemapMantiuk = cv2.createTonemapMantiuk()
-    tonemapMantiuk.setSaturation(1.6)
-    tonemapMantiuk.setScale(0.7)
+    tonemapMantiuk.setSaturation(1.0)
+    tonemapMantiuk.setScale(1.0)
     ldr = tonemapMantiuk.process(hdr_image.copy())
     ldr_8bit = np.clip(ldr * 255, 0, 255).astype('uint8')
 
