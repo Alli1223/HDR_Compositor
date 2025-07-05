@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 FROM node:18-slim
 
 WORKDIR /app
@@ -12,14 +13,16 @@ RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # install python dependencies
-RUN pip install --no-cache-dir opencv-python-headless numpy
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir opencv-python-headless numpy
 
 # copy python scripts
 COPY find_and_merge_aeb.py process_uploads.py ./
 
 # copy frontend
 COPY frontend/package.json frontend/package-lock.json ./frontend/
-RUN cd frontend && npm install
+RUN --mount=type=cache,target=/root/.npm \
+    cd frontend && npm ci
 COPY frontend ./frontend
 
 WORKDIR /app/frontend
