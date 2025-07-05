@@ -46,4 +46,10 @@ This builds an image using `Dockerfile.web` with Docker Buildx and starts the ap
 
 ### Requirements
 
-The scripts rely on `opencv-python`, `numpy`, `dearpygui` and `exiftool` being available. On Debian based systems you can install exiftool with `apt-get install exiftool`.
+Install the Python dependencies using the provided `requirements.txt` file:
+
+```bash
+pip install -r requirements.txt
+```
+
+The tools rely on `opencv-python-headless`, `numpy` and `dearpygui` in addition to `exiftool`. On Debian based systems you can install exiftool with `apt-get install exiftool`.
