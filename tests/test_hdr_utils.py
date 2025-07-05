@@ -31,6 +31,8 @@ def test_enhance_and_tonemap():
     ldr = tonemap_mantiuk(hdr)
     assert ldr.dtype == np.uint8
     assert ldr.shape == images[0].shape
+    ldr2 = tonemap_mantiuk(hdr, saturation=2.0, contrast=1.0)
+    assert ldr2.shape == images[0].shape
     enhanced = enhance_image(images[0], reference=images[1])
     assert enhanced.shape == images[0].shape
 

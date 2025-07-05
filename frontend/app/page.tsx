@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Button from "@mui/material/Button";
+import Slider from "@mui/material/Slider";
 
 export default function Home() {
   const [files, setFiles] = useState<FileList | null>(null);
@@ -9,6 +10,8 @@ export default function Home() {
   const [previews, setPreviews] = useState<string[]>([]);
   const [autoAlign, setAutoAlign] = useState(false);
   const [antiGhost, setAntiGhost] = useState(false);
+  const [contrast, setContrast] = useState(0.7);
+  const [saturation, setSaturation] = useState(1.6);
 
   const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files;
@@ -28,6 +31,8 @@ export default function Home() {
     Array.from(files).forEach((f) => formData.append("images", f));
     formData.append("autoAlign", autoAlign ? "1" : "0");
     formData.append("antiGhost", antiGhost ? "1" : "0");
+    formData.append("contrast", contrast.toString());
+    formData.append("saturation", saturation.toString());
     setLoading(true);
     setResultUrl(null);
     const res = await fetch("/api/process", { method: "POST", body: formData });
@@ -92,6 +97,32 @@ export default function Home() {
             />
             Anti-Ghosting
           </label>
+          <div className="w-full px-4">
+            <label htmlFor="contrast-slider" className="block text-sm mb-1">
+              Contrast: {contrast.toFixed(2)}
+            </label>
+            <Slider
+              id="contrast-slider"
+              min={0}
+              max={2}
+              step={0.05}
+              value={contrast}
+              onChange={(_, v) => setContrast(v as number)}
+            />
+          </div>
+          <div className="w-full px-4">
+            <label htmlFor="saturation-slider" className="block text-sm mb-1">
+              Saturation: {saturation.toFixed(2)}
+            </label>
+            <Slider
+              id="saturation-slider"
+              min={0}
+              max={2}
+              step={0.05}
+              value={saturation}
+              onChange={(_, v) => setSaturation(v as number)}
+            />
+          </div>
         </div>
 
         {/* Right column: create button and result */}

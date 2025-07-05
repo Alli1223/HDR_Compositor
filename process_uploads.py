@@ -23,6 +23,8 @@ def main():
     parser.add_argument("paths", nargs="+", help="input images followed by output path")
     parser.add_argument("--align", action="store_true", help="auto align images")
     parser.add_argument("--deghost", action="store_true", help="apply anti-ghosting")
+    parser.add_argument("--contrast", type=float, default=0.7, help="tone mapping contrast scale")
+    parser.add_argument("--saturation", type=float, default=1.6, help="tone mapping saturation")
     args = parser.parse_args()
 
     if len(args.paths) < 2:
@@ -37,7 +39,12 @@ def main():
     images = load_images(aeb_images)
     hdr = create_hdr(images, exposure_times, align=args.align, deghost=args.deghost)
     ref_image = get_medium_exposure_image(images, exposure_times)
-    ldr = tonemap_mantiuk(hdr, ref_image)
+    ldr = tonemap_mantiuk(
+        hdr,
+        ref_image,
+        saturation=args.saturation,
+        contrast=args.contrast,
+    )
     cv2.imwrite(output_path, ldr)
     print(output_path)
 

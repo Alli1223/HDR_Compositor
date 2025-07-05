@@ -15,6 +15,8 @@ export async function POST(req: Request) {
   }
   const autoAlign = formData.get('autoAlign') === '1';
   const antiGhost = formData.get('antiGhost') === '1';
+  const contrast = formData.get('contrast');
+  const saturation = formData.get('saturation');
   const dir = await fs.mkdtemp(join(tmpdir(), 'hdr-'));
   const paths: string[] = [];
   for (const file of files) {
@@ -29,6 +31,8 @@ export async function POST(req: Request) {
     const args: string[] = [];
     if (autoAlign) args.push('--align');
     if (antiGhost) args.push('--deghost');
+    if (contrast) args.push('--contrast', String(contrast));
+    if (saturation) args.push('--saturation', String(saturation));
     await execFileAsync('python3', [script, ...args, ...paths, outputPath]);
     const data = await fs.readFile(outputPath);
     return new NextResponse(data, {
