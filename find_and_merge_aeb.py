@@ -4,6 +4,7 @@ import sys
 import cv2
 import numpy as np
 from datetime import datetime, timedelta
+from hdr_utils import tonemap_mantiuk
 
 def find_aeb_images(directory):
     aeb_images = []
@@ -91,18 +92,11 @@ def create_hdr(images, exposure_times):
 
 
 def save_hdr_image(hdr_image, save_path, group_index):
-    # Use Mantiuk tonemapping
-    tonemapMantiuk = cv2.createTonemapMantiuk()
-    tonemapMantiuk.setSaturation(1.2)  # Adjust saturation (default 1.0)
-    tonemapMantiuk.setScale(0.7)  # Adjust scale factor for luminance (default 0.7)
-    ldrMantiuk = tonemapMantiuk.process(hdr_image.copy())
-    
-    # Clip the LDR image to the 0-255 range and convert to 8-bit
-    ldrMantiuk_8bit = np.clip(ldrMantiuk * 255, 0, 255).astype('uint8')
-
-    # Save the result
+    """Tonemap and save an HDR image."""
     output_path = os.path.join(save_path, f"hdr_image_{group_index}_mantiuk.jpg")
-    cv2.imwrite(output_path, ldrMantiuk_8bit)
+    ldr = tonemap_mantiuk(hdr_image)
+    cv2.imwrite(output_path, ldr)
+    return output_path
 
 
 if __name__ == "__main__":
@@ -121,7 +115,7 @@ if __name__ == "__main__":
         images = load_images(aeb_images)
         if images:
             hdr_image = create_hdr(images, exposure_times)
-            save_hdr_image(hdr_image, output_dir, group_index)
-            print(f"Group {group_index}: HDR image saved to {output_dir}/hdr_image_{group_index}.jpg")
+            output_path = save_hdr_image(hdr_image, output_dir, group_index)
+            print(f"Group {group_index}: HDR image saved to {output_path}")
         else:
             print(f"Group {group_index}: Failed to load images or exposure times are missing.")
