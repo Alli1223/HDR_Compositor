@@ -10,6 +10,8 @@ const execFileAsync = promisify(execFile);
 export async function POST(req: Request) {
   const formData = await req.formData();
   const files = formData.getAll('images') as File[];
+  const ghost = (formData.get('ghost') || '0').toString();
+  const align = formData.get('align') === '1' ? '1' : '0';
   if (!files.length) {
     return new NextResponse('No files uploaded', { status: 400 });
   }
@@ -24,7 +26,9 @@ export async function POST(req: Request) {
   const outputPath = join(dir, 'result.jpg');
   try {
     const script = join(process.cwd(), '..', 'process_uploads.py');
-    await execFileAsync('python3', [script, ...paths, outputPath]);
+    await execFileAsync('python3', [script, ...paths, outputPath], {
+      env: { ...process.env, GHOST_LEVEL: ghost, AUTO_ALIGN: align },
+    });
     const data = await fs.readFile(outputPath);
     return new NextResponse(data, {
       status: 200,

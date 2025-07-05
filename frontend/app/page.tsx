@@ -7,6 +7,8 @@ export default function Home() {
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [ghostLevel, setGhostLevel] = useState(0);
+  const [autoAlign, setAutoAlign] = useState(false);
 
   const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files;
@@ -19,11 +21,21 @@ export default function Home() {
     }
   };
 
+  const handleGhostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setGhostLevel(parseFloat(e.target.value));
+  };
+
+  const handleAlignChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAutoAlign(e.target.checked);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!files || files.length === 0) return;
     const formData = new FormData();
     Array.from(files).forEach((f) => formData.append("images", f));
+    formData.append("ghost", ghostLevel.toString());
+    formData.append("align", autoAlign ? "1" : "0");
     setLoading(true);
     setResultUrl(null);
     const res = await fetch("/api/process", { method: "POST", body: formData });
@@ -57,6 +69,22 @@ export default function Home() {
           <Button variant="contained" component="span">
             Choose Images
           </Button>
+        </label>
+        <label className="flex items-center gap-2">
+          Ghost Removal
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.1"
+            value={ghostLevel}
+            onChange={handleGhostChange}
+          />
+          <span>{ghostLevel.toFixed(1)}</span>
+        </label>
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={autoAlign} onChange={handleAlignChange} />
+          Auto Align
         </label>
         <Button type="submit" variant="contained">
           Create HDR

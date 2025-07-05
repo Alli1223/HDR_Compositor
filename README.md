@@ -33,7 +33,7 @@ npm run dev
 ```
 
 Open `http://localhost:3000` in your browser, select your AEB images and click **Create HDR**.
-The server-side script respects the `GHOST_LEVEL` and `AUTO_ALIGN` environment variables if you want to adjust these settings for uploads.
+The page includes a slider for ghost removal strength and a checkbox to enable automatic alignment. These values are sent to the backend, which sets the corresponding `GHOST_LEVEL` and `AUTO_ALIGN` environment variables when invoking `process_uploads.py`.
 
 ### Docker
 
