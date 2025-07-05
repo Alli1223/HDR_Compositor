@@ -9,8 +9,9 @@ RUN apt-get update && \
     apt-get install -y exiftool && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy the Python script into the container
+# Copy the Python scripts into the container
 COPY ./find_and_merge_aeb.py ./find_and_merge_aeb.py
+COPY ./hdr_utils.py ./hdr_utils.py
 
 # Install Python dependencies
 RUN pip install --no-cache-dir opencv-python-headless numpy
