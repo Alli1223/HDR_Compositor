@@ -1,0 +1,25 @@
+FROM node:18-slim
+
+WORKDIR /app
+
+# install python and exiftool
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip exiftool && \
+    rm -rf /var/lib/apt/lists/*
+
+# install python dependencies
+RUN pip3 install --no-cache-dir opencv-python-headless numpy
+
+# copy python scripts
+COPY find_and_merge_aeb.py process_uploads.py ./
+
+# copy frontend
+COPY frontend/package.json frontend/package-lock.json ./frontend/
+RUN cd frontend && npm install
+COPY frontend ./frontend
+
+WORKDIR /app/frontend
+RUN npm run build
+
+EXPOSE 3000
+CMD ["npm", "start"]

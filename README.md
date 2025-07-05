@@ -22,6 +22,28 @@ python hdr_gui.py
 
 After selecting images, click **Create HDR** and then **Save Result** to write `hdr_result.jpg` next to the chosen files.
 
+## Web Interface
+
+A minimal Next.js frontend is available in the `frontend` directory. It lets you select images in your browser and downloads the processed HDR image.
+
+```bash
+cd frontend
+npm install  # first time only
+npm run dev
+```
+
+Open `http://localhost:3000` in your browser, select your AEB images and click **Create HDR**.
+
+### Docker
+
+To run the web interface in a container, simply execute:
+
+```bash
+make run
+```
+
+This builds an image using `Dockerfile.web` and starts the app on port 3000.
+
 ### Requirements
 
 The scripts rely on `opencv-python`, `numpy`, `dearpygui` and `exiftool` being available. On Debian based systems you can install exiftool with `apt-get install exiftool`.
