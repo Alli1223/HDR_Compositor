@@ -1,9 +1,7 @@
 import os
 import cv2
 import numpy as np
-import tkinter as tk
-from tkinter import filedialog, messagebox
-from PIL import Image, ImageTk
+import dearpygui.dearpygui as dpg
 
 from find_and_merge_aeb import (
     find_aeb_images_and_exposure_times_from_list,
@@ -20,62 +18,59 @@ def tonemap_mantiuk(hdr_image):
     return ldr_8bit
 
 class HDRGui:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("HDR Compositor")
+    def __init__(self):
         self.file_paths = []
         self.hdr_image = None
         self.ldr_image = None
 
-        self.select_btn = tk.Button(root, text="Select Images", command=self.select_files)
-        self.select_btn.pack(pady=5)
-
-        self.listbox = tk.Listbox(root, width=80)
-        self.listbox.pack(pady=5)
-
-        self.create_btn = tk.Button(root, text="Create HDR", command=self.create_hdr_image)
-        self.create_btn.pack(pady=5)
-
-        self.save_btn = tk.Button(root, text="Save Result", command=self.save_image, state=tk.DISABLED)
-        self.save_btn.pack(pady=5)
-
-        self.image_label = tk.Label(root)
-        self.image_label.pack(pady=5)
+        with dpg.window(label="HDR Compositor", width=800, height=600):
+            dpg.add_button(label="Select Images", callback=self.select_files)
+            self.listbox = dpg.add_listbox(items=[], num_items=5, width=780)
+            dpg.add_button(label="Create HDR", callback=self.create_hdr_image)
+            self.save_btn = dpg.add_button(label="Save Result", callback=self.save_image, enabled=False)
+            with dpg.group() as self.image_group:
+                dpg.add_text("HDR preview will appear here")
 
     def select_files(self):
-        paths = filedialog.askopenfilenames(
-            title="Select AEB Images",
-            filetypes=[("Image files", "*.jpg *.jpeg *.png *.tif *.tiff")],
-        )
-        if paths:
-            self.file_paths = list(paths)
-            self.listbox.delete(0, tk.END)
-            for p in self.file_paths:
-                self.listbox.insert(tk.END, p)
-            self.save_btn.config(state=tk.DISABLED)
-            self.image_label.configure(image="")
+        dpg.show_item("file_dialog")
+
+    def _file_selected(self, sender, app_data):
+        self.file_paths = list(app_data["selections"].values())
+        dpg.configure_item(self.listbox, items=self.file_paths)
+        dpg.configure_item(self.save_btn, enabled=False)
+        dpg.delete_item(self.image_group, children_only=True)
+        dpg.add_text("HDR preview will appear here", parent=self.image_group)
 
     def create_hdr_image(self):
         if len(self.file_paths) < 3:
-            messagebox.showwarning("Selection Error", "Select at least three images.")
+            dpg.show_logger()
+            dpg.log_warning("Select at least three images.")
             return
         aeb_images, exposure_times = find_aeb_images_and_exposure_times_from_list(self.file_paths)
         if len(aeb_images) < 3:
-            messagebox.showwarning("AEB Error", "Selected images do not contain enough AEB exposures.")
+            dpg.show_logger()
+            dpg.log_warning("Selected images do not contain enough AEB exposures.")
             return
         images = load_images(aeb_images)
         self.hdr_image = create_hdr(images, exposure_times)
         self.ldr_image = tonemap_mantiuk(self.hdr_image)
         self.display_image(self.ldr_image)
-        self.save_btn.config(state=tk.NORMAL)
+        dpg.configure_item(self.save_btn, enabled=True)
 
     def display_image(self, img):
-        bgr = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        im = Image.fromarray(bgr)
-        im.thumbnail((600, 400))
-        tk_img = ImageTk.PhotoImage(im)
-        self.image_label.configure(image=tk_img)
-        self.image_label.image = tk_img
+        rgba = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
+        height, width = rgba.shape[:2]
+        data = (rgba / 255.0).flatten().astype(np.float32)
+        if dpg.does_item_exist("hdr_texture"):
+            dpg.set_value("hdr_texture", data)
+            dpg.configure_item("hdr_texture", width=width, height=height)
+        else:
+            with dpg.texture_registry(show=False):
+                dpg.add_static_texture(width, height, data, tag="hdr_texture")
+        if dpg.does_item_exist("hdr_image"):
+            dpg.configure_item("hdr_image", texture_tag="hdr_texture")
+        else:
+            dpg.add_image("hdr_texture", parent=self.image_group, tag="hdr_image")
 
     def save_image(self):
         if self.ldr_image is None:
@@ -83,13 +78,25 @@ class HDRGui:
         first_dir = os.path.dirname(self.file_paths[0])
         save_path = os.path.join(first_dir, "hdr_result.jpg")
         cv2.imwrite(save_path, self.ldr_image)
-        messagebox.showinfo("Saved", f"HDR image saved to {save_path}")
+        dpg.show_logger()
+        dpg.log_info(f"HDR image saved to {save_path}")
 
 
 def main():
-    root = tk.Tk()
-    app = HDRGui(root)
-    root.mainloop()
+    dpg.create_context()
+    gui = HDRGui()
+    with dpg.file_dialog(directory_selector=False, show=False, callback=gui._file_selected, id="file_dialog", multiselect=True):
+        dpg.add_file_extension(".jpg", color=(255, 255, 255, 255))
+        dpg.add_file_extension(".jpeg", color=(255, 255, 255, 255))
+        dpg.add_file_extension(".png", color=(255, 255, 255, 255))
+        dpg.add_file_extension(".tif", color=(255, 255, 255, 255))
+        dpg.add_file_extension(".tiff", color=(255, 255, 255, 255))
+    dpg.create_viewport(title="HDR Compositor", width=800, height=600)
+    dpg.setup_dearpygui()
+    dpg.show_viewport()
+    dpg.set_primary_window(gui.image_group, True)
+    dpg.start_dearpygui()
+    dpg.destroy_context()
 
 if __name__ == "__main__":
     main()

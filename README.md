@@ -12,7 +12,7 @@ python find_and_merge_aeb.py <input_dir> <output_dir>
 
 ## GUI Application
 
-A simple Tkinter based application is provided in `hdr_gui.py`. It allows you to select 3–5 images manually and create an HDR image which can be saved back to the same directory.
+A simple DearPyGui based application is provided in `hdr_gui.py`. It allows you to select 3–5 images manually and create an HDR image which can be saved back to the same directory.
 
 Run the GUI with:
 
@@ -24,4 +24,4 @@ After selecting images, click **Create HDR** and then **Save Result** to write `
 
 ### Requirements
 
-The scripts rely on `opencv-python`, `numpy`, `Pillow` and `exiftool` being available. On Debian based systems you can install exiftool with `apt-get install exiftool`.
+The scripts rely on `opencv-python`, `numpy`, `dearpygui` and `exiftool` being available. On Debian based systems you can install exiftool with `apt-get install exiftool`.
