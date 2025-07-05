@@ -90,19 +90,44 @@ def create_hdr(images, exposure_times):
     return hdr
 
 
-def save_hdr_image(hdr_image, save_path, group_index):
-    # Use Mantiuk tonemapping
-    tonemapMantiuk = cv2.createTonemapMantiuk()
-    tonemapMantiuk.setSaturation(1.2)  # Adjust saturation (default 1.0)
-    tonemapMantiuk.setScale(0.7)  # Adjust scale factor for luminance (default 0.7)
-    ldrMantiuk = tonemapMantiuk.process(hdr_image.copy())
-    
-    # Clip the LDR image to the 0-255 range and convert to 8-bit
-    ldrMantiuk_8bit = np.clip(ldrMantiuk * 255, 0, 255).astype('uint8')
+def get_medium_exposure_image(images, exposure_times):
+    if not images or not exposure_times:
+        return None
+    pairs = sorted(zip(exposure_times, images), key=lambda x: x[0])
+    _, sorted_images = zip(*pairs)
+    return sorted_images[len(sorted_images) // 2]
 
-    # Save the result
+
+def enhance_image(img, reference=None):
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV).astype(np.float32)
+    hsv[..., 1] = np.clip(hsv[..., 1] * 1.3, 0, 255)
+    img = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
+
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    l = clahe.apply(l)
+    img = cv2.cvtColor(cv2.merge((l, a, b)), cv2.COLOR_LAB2BGR)
+
+    if reference is not None:
+        ref = cv2.resize(reference, (img.shape[1], img.shape[0]))
+        img = cv2.addWeighted(img.astype(np.float32), 0.7, ref.astype(np.float32), 0.3, 0)
+        img = img.astype(np.uint8)
+    return img
+
+
+def save_hdr_image(hdr_image, save_path, group_index, images=None, exposure_times=None):
+    tonemapMantiuk = cv2.createTonemapMantiuk()
+    tonemapMantiuk.setSaturation(1.6)
+    tonemapMantiuk.setScale(0.7)
+    ldr = tonemapMantiuk.process(hdr_image.copy())
+    ldr_8bit = np.clip(ldr * 255, 0, 255).astype('uint8')
+
+    ref = get_medium_exposure_image(images, exposure_times) if images and exposure_times else None
+    enhanced = enhance_image(ldr_8bit, ref)
+
     output_path = os.path.join(save_path, f"hdr_image_{group_index}_mantiuk.jpg")
-    cv2.imwrite(output_path, ldrMantiuk_8bit)
+    cv2.imwrite(output_path, enhanced)
 
 
 if __name__ == "__main__":
@@ -121,7 +146,7 @@ if __name__ == "__main__":
         images = load_images(aeb_images)
         if images:
             hdr_image = create_hdr(images, exposure_times)
-            save_hdr_image(hdr_image, output_dir, group_index)
+            save_hdr_image(hdr_image, output_dir, group_index, images, exposure_times)
             print(f"Group {group_index}: HDR image saved to {output_dir}/hdr_image_{group_index}.jpg")
         else:
             print(f"Group {group_index}: Failed to load images or exposure times are missing.")
