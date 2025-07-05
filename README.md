@@ -42,7 +42,7 @@ To run the web interface in a container, simply execute:
 make run
 ```
 
-This builds an image using `Dockerfile.web` with Docker Buildx and starts the app on port 3000. Make sure the Buildx component is installed as described in the Docker documentation.
+This builds an image using `Dockerfile.web` with Docker BuildKit enabled and starts the app on port 3000. No additional Buildx plugin is required.
 
 ### Requirements
 
