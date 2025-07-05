@@ -80,11 +80,51 @@ def load_images(image_paths):
         images.append(img)
     return images
 
-def create_hdr(images, exposure_times):
-    # Convert exposure times to the format expected by OpenCV (numpy array)
-    times = np.array(exposure_times, dtype=np.float32)
 
-    # Existing HDR creation code, now including `times` in the `process` call
+def align_images(images):
+    """Align images using OpenCV's Median Threshold Bitmap algorithm."""
+    align_mtb = cv2.createAlignMTB()
+    aligned = []
+    align_mtb.process(images, aligned)
+    return aligned
+
+
+def apply_anti_ghosting(images, level=0.0):
+    """Simple anti-ghosting by blending with the median image.
+
+    Args:
+        images: list of input images.
+        level: strength of ghost removal in the range [0, 1].
+
+    Returns:
+        List of processed images.
+    """
+    level = np.clip(level, 0.0, 1.0)
+    if level == 0:
+        return images
+    stack = np.stack([img.astype(np.float32) for img in images], axis=0)
+    median = np.median(stack, axis=0)
+    result = []
+    for img in stack:
+        blended = img * (1 - level) + median * level
+        result.append(np.clip(blended, 0, 255).astype(np.uint8))
+    return result
+
+def create_hdr(images, exposure_times, ghost_level=0.0, auto_align=False):
+    """Create an HDR image from input exposures.
+
+    Args:
+        images: list of images.
+        exposure_times: list of exposure times corresponding to the images.
+        ghost_level: strength of anti-ghosting (0..1).
+        auto_align: align images before merging if True.
+    """
+    if auto_align:
+        images = align_images(images)
+    if ghost_level > 0:
+        images = apply_anti_ghosting(images, ghost_level)
+
+    times = np.array(exposure_times, dtype=np.float32)
     merge_debevec = cv2.createMergeDebevec()
     hdr = merge_debevec.process(images, times=times)
     return hdr
@@ -131,10 +171,17 @@ def save_hdr_image(hdr_image, save_path, group_index, images=None, exposure_time
 
 
 if __name__ == "__main__":
-    input_dir = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("INPUT_DIR")
-    output_dir = sys.argv[2] if len(sys.argv) > 2 else os.environ.get("OUTPUT_DIR")
+    import argparse
 
-    all_image_paths = find_aeb_images(input_dir)  # Assume this returns all AEB image paths
+    parser = argparse.ArgumentParser(description="Find AEB images and create HDR outputs")
+    parser.add_argument("input_dir", help="Directory to scan for images")
+    parser.add_argument("output_dir", help="Directory to save HDR results")
+    parser.add_argument("--ghost", type=float, default=0.0, help="Anti-ghosting level (0-1)")
+    parser.add_argument("--align", action="store_true", help="Auto align input images")
+
+    args = parser.parse_args()
+
+    all_image_paths = find_aeb_images(args.input_dir)
     grouped_image_paths = group_images_by_datetime(all_image_paths)
 
     for group_index, image_group in enumerate(grouped_image_paths, start=1):
@@ -145,8 +192,8 @@ if __name__ == "__main__":
 
         images = load_images(aeb_images)
         if images:
-            hdr_image = create_hdr(images, exposure_times)
-            save_hdr_image(hdr_image, output_dir, group_index, images, exposure_times)
-            print(f"Group {group_index}: HDR image saved to {output_dir}/hdr_image_{group_index}.jpg")
+            hdr_image = create_hdr(images, exposure_times, args.ghost, args.align)
+            save_hdr_image(hdr_image, args.output_dir, group_index, images, exposure_times)
+            print(f"Group {group_index}: HDR image saved to {args.output_dir}/hdr_image_{group_index}.jpg")
         else:
             print(f"Group {group_index}: Failed to load images or exposure times are missing.")

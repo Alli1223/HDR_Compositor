@@ -52,6 +52,8 @@ class HDRGui:
         with dpg.window(label="HDR Compositor", width=800, height=600):
             dpg.add_button(label="Select Images", callback=self.select_files)
             self.listbox = dpg.add_listbox(items=[], num_items=5, width=780)
+            self.ghost_slider = dpg.add_slider_float(label="Ghost Removal", min_value=0.0, max_value=1.0, default_value=0.0, width=200)
+            self.align_checkbox = dpg.add_checkbox(label="Auto Align")
             dpg.add_button(label="Create HDR", callback=self.create_hdr_image)
             self.save_btn = dpg.add_button(label="Save Result", callback=self.save_image, enabled=False)
             with dpg.group() as self.image_group:
@@ -78,7 +80,9 @@ class HDRGui:
             dpg.log_warning("Selected images do not contain enough AEB exposures.")
             return
         images = load_images(aeb_images)
-        self.hdr_image = create_hdr(images, exposure_times)
+        ghost_level = dpg.get_value(self.ghost_slider)
+        auto_align = dpg.get_value(self.align_checkbox)
+        self.hdr_image = create_hdr(images, exposure_times, ghost_level, auto_align)
         ref_image = get_medium_exposure_image(images, exposure_times)
         self.ldr_image = tonemap_mantiuk(self.hdr_image, ref_image)
         self.display_image(self.ldr_image)

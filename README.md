@@ -4,15 +4,15 @@ This repository contains tools for merging Auto Exposure Bracketing (AEB) images
 
 ## Command Line Usage
 
-`find_and_merge_aeb.py` can be run directly to search a folder for AEB tagged images and create HDR files for each set found.
+`find_and_merge_aeb.py` can be run directly to search a folder for AEB tagged images and create HDR files for each set found. Optional flags enable automatic alignment and ghost removal.
 
 ```bash
-python find_and_merge_aeb.py <input_dir> <output_dir>
+python find_and_merge_aeb.py <input_dir> <output_dir> [--ghost LEVEL] [--align]
 ```
 
 ## GUI Application
 
-A simple DearPyGui based application is provided in `hdr_gui.py`. It allows you to select 3–5 images manually and create an HDR image which can be saved back to the same directory.
+A simple DearPyGui based application is provided in `hdr_gui.py`. It allows you to select 3–5 images manually and create an HDR image which can be saved back to the same directory. The interface includes a slider for ghost removal strength and a checkbox to automatically align the photos.
 
 Run the GUI with:
 
@@ -33,6 +33,7 @@ npm run dev
 ```
 
 Open `http://localhost:3000` in your browser, select your AEB images and click **Create HDR**.
+The server-side script respects the `GHOST_LEVEL` and `AUTO_ALIGN` environment variables if you want to adjust these settings for uploads.
 
 ### Docker
 

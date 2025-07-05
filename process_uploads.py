@@ -44,7 +44,10 @@ def tonemap_mantiuk(hdr_image, reference_image=None):
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: process_uploads.py <image1> [<image2> ...] <output>")
+        print(
+            "Usage: process_uploads.py <image1> [<image2> ...] <output>"
+            "\nOptional environment variables: GHOST_LEVEL (0-1), AUTO_ALIGN=1"
+        )
         sys.exit(1)
     *image_paths, output_path = sys.argv[1:]
     aeb_images, exposure_times = find_aeb_images_and_exposure_times_from_list(image_paths)
@@ -52,7 +55,9 @@ def main():
         print("No AEB-tagged images found", file=sys.stderr)
         sys.exit(1)
     images = load_images(aeb_images)
-    hdr = create_hdr(images, exposure_times)
+    ghost_level = float(os.environ.get("GHOST_LEVEL", "0"))
+    auto_align = os.environ.get("AUTO_ALIGN", "0") == "1"
+    hdr = create_hdr(images, exposure_times, ghost_level, auto_align)
     ref_image = get_medium_exposure_image(images, exposure_times)
     ldr = tonemap_mantiuk(hdr, ref_image)
     cv2.imwrite(output_path, ldr)
