@@ -4,6 +4,10 @@ import sys
 import cv2
 import numpy as np
 from datetime import datetime, timedelta
+try:  # support running as a script or a package module
+    from .hdr_utils import get_medium_exposure_image, enhance_image
+except ImportError:  # pragma: no cover - fallback for direct execution
+    from hdr_utils import get_medium_exposure_image, enhance_image
 
 def find_aeb_images(directory):
     aeb_images = []
@@ -88,32 +92,6 @@ def create_hdr(images, exposure_times):
     merge_debevec = cv2.createMergeDebevec()
     hdr = merge_debevec.process(images, times=times)
     return hdr
-
-
-def get_medium_exposure_image(images, exposure_times):
-    if not images or not exposure_times:
-        return None
-    pairs = sorted(zip(exposure_times, images), key=lambda x: x[0])
-    _, sorted_images = zip(*pairs)
-    return sorted_images[len(sorted_images) // 2]
-
-
-def enhance_image(img, reference=None):
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV).astype(np.float32)
-    hsv[..., 1] = np.clip(hsv[..., 1] * 1.3, 0, 255)
-    img = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
-
-    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    l = clahe.apply(l)
-    img = cv2.cvtColor(cv2.merge((l, a, b)), cv2.COLOR_LAB2BGR)
-
-    if reference is not None:
-        ref = cv2.resize(reference, (img.shape[1], img.shape[0]))
-        img = cv2.addWeighted(img.astype(np.float32), 0.7, ref.astype(np.float32), 0.3, 0)
-        img = img.astype(np.uint8)
-    return img
 
 
 def save_hdr_image(hdr_image, save_path, group_index, images=None, exposure_times=None):
