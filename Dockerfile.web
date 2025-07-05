@@ -17,7 +17,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --no-cache-dir opencv-python-headless numpy
 
 # copy python scripts
-COPY find_and_merge_aeb.py process_uploads.py ./
+COPY find_and_merge_aeb.py process_uploads.py hdr_utils.py ./
 
 # copy frontend
 COPY frontend/package.json frontend/package-lock.json ./frontend/
