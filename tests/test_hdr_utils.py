@@ -10,6 +10,8 @@ from HDR_Compositor.hdr_utils import (
     get_medium_exposure_image,
     enhance_image,
     tonemap_mantiuk,
+    align_images,
+    remove_ghosts,
 )
 from HDR_Compositor.find_and_merge_aeb import create_hdr
 
@@ -31,3 +33,17 @@ def test_enhance_and_tonemap():
     assert ldr.shape == images[0].shape
     enhanced = enhance_image(images[0], reference=images[1])
     assert enhanced.shape == images[0].shape
+
+
+def test_align_and_deghost():
+    img1 = np.zeros((10, 10, 3), dtype=np.uint8)
+    cv2.rectangle(img1, (2, 2), (7, 7), (255, 255, 255), -1)
+    img2 = np.roll(img1, 1, axis=1)
+    aligned = align_images([img1, img2])
+    diff = np.abs(aligned[0].astype(int) - aligned[1].astype(int)).sum()
+    assert diff < 100
+
+    ghosted = img1.copy()
+    ghosted[5, 5] = [0, 0, 255]
+    deghosted = remove_ghosts([img1, ghosted], threshold=10)
+    assert tuple(deghosted[1][5, 5]) == tuple(img1[5, 5])

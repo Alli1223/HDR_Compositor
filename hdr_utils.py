@@ -39,3 +39,40 @@ def tonemap_mantiuk(hdr_image: np.ndarray, reference_image: Optional[np.ndarray]
     ldr = tonemap.process(hdr_image.copy())
     ldr_8bit = np.clip(ldr * 255, 0, 255).astype("uint8")
     return enhance_image(ldr_8bit, reference_image)
+
+
+def align_images(images: List[np.ndarray]) -> List[np.ndarray]:
+    """Align images to the first image using phase correlation."""
+    if not images:
+        return images
+    aligned = [images[0]]
+    ref_gray = cv2.cvtColor(images[0], cv2.COLOR_BGR2GRAY)
+    for img in images[1:]:
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        shift = cv2.phaseCorrelate(np.float32(ref_gray), np.float32(gray))[0]
+        matrix = np.float32([[1, 0, shift[0]], [0, 1, shift[1]]])
+        aligned_img = cv2.warpAffine(
+            img,
+            matrix,
+            (img.shape[1], img.shape[0]),
+            flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP,
+        )
+        aligned.append(aligned_img)
+    return aligned
+
+
+def remove_ghosts(images: List[np.ndarray], threshold: int = 25) -> List[np.ndarray]:
+    """Replace pixels that deviate from the median with the reference image."""
+    if not images:
+        return images
+    stack = np.stack(images).astype(np.float32)
+    median = np.median(stack, axis=0)
+    reference = images[0]
+    result = []
+    for img in images:
+        diff = np.abs(img.astype(np.float32) - median).sum(axis=2)
+        mask = diff > threshold
+        deghosted = img.copy()
+        deghosted[mask] = reference[mask]
+        result.append(deghosted)
+    return result

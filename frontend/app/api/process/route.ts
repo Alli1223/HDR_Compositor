@@ -13,6 +13,8 @@ export async function POST(req: Request) {
   if (!files.length) {
     return new NextResponse('No files uploaded', { status: 400 });
   }
+  const autoAlign = formData.get('autoAlign') === '1';
+  const antiGhost = formData.get('antiGhost') === '1';
   const dir = await fs.mkdtemp(join(tmpdir(), 'hdr-'));
   const paths: string[] = [];
   for (const file of files) {
@@ -24,7 +26,10 @@ export async function POST(req: Request) {
   const outputPath = join(dir, 'result.jpg');
   try {
     const script = join(process.cwd(), '..', 'process_uploads.py');
-    await execFileAsync('python3', [script, ...paths, outputPath]);
+    const args: string[] = [];
+    if (autoAlign) args.push('--align');
+    if (antiGhost) args.push('--deghost');
+    await execFileAsync('python3', [script, ...args, ...paths, outputPath]);
     const data = await fs.readFile(outputPath);
     return new NextResponse(data, {
       status: 200,

@@ -7,6 +7,8 @@ export default function Home() {
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [autoAlign, setAutoAlign] = useState(false);
+  const [antiGhost, setAntiGhost] = useState(false);
 
   const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files;
@@ -24,6 +26,8 @@ export default function Home() {
     if (!files || files.length === 0) return;
     const formData = new FormData();
     Array.from(files).forEach((f) => formData.append("images", f));
+    formData.append("autoAlign", autoAlign ? "1" : "0");
+    formData.append("antiGhost", antiGhost ? "1" : "0");
     setLoading(true);
     setResultUrl(null);
     const res = await fetch("/api/process", { method: "POST", body: formData });
@@ -69,9 +73,25 @@ export default function Home() {
           )}
         </div>
 
-        {/* Middle column: placeholder settings */}
+        {/* Middle column: settings */}
         <div className="flex flex-col items-center justify-start flex-1 gap-4">
           <h2 className="text-lg font-semibold">Settings</h2>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={autoAlign}
+              onChange={(e) => setAutoAlign(e.target.checked)}
+            />
+            Auto Alignment
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={antiGhost}
+              onChange={(e) => setAntiGhost(e.target.checked)}
+            />
+            Anti-Ghosting
+          </label>
         </div>
 
         {/* Right column: create button and result */}
