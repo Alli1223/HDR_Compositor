@@ -8,14 +8,7 @@ from find_and_merge_aeb import (
     load_images,
     create_hdr,
 )
-
-def tonemap_mantiuk(hdr_image):
-    tonemap = cv2.createTonemapMantiuk()
-    tonemap.setSaturation(1.2)
-    tonemap.setScale(0.7)
-    ldr = tonemap.process(hdr_image.copy())
-    ldr_8bit = np.clip(ldr * 255, 0, 255).astype('uint8')
-    return ldr_8bit
+from hdr_utils import tonemap_mantiuk
 
 class HDRGui:
     def __init__(self):
