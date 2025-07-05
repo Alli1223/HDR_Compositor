@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Button from "@mui/material/Button";
 import Slider from "@mui/material/Slider";
+import CircularProgress from "@mui/material/CircularProgress";
 
 export default function Home() {
   const [files, setFiles] = useState<FileList | null>(null);
@@ -70,58 +71,72 @@ export default function Home() {
             </Button>
           </label>
           {previews.length > 0 && (
-            <div className="grid grid-cols-2 gap-2">
-              {previews.map((src) => (
-                <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
-              ))}
+            <div className="border rounded-lg p-2">
+              <div className="grid grid-cols-2 gap-2">
+                {previews.map((src) => (
+                  <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
+                ))}
+              </div>
             </div>
           )}
         </div>
 
         {/* Middle column: settings */}
-        <div className="flex flex-col items-center justify-start flex-1 gap-4">
-          <h2 className="text-lg font-semibold">Settings</h2>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={autoAlign}
-              onChange={(e) => setAutoAlign(e.target.checked)}
-            />
-            Auto Alignment
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={antiGhost}
-              onChange={(e) => setAntiGhost(e.target.checked)}
-            />
-            Anti-Ghosting
-          </label>
-          <div className="w-full px-4">
-            <label htmlFor="contrast-slider" className="block text-sm mb-1">
-              Contrast: {contrast.toFixed(2)}
-            </label>
-            <Slider
-              id="contrast-slider"
-              min={0}
-              max={2}
-              step={0.05}
-              value={contrast}
-              onChange={(_, v) => setContrast(v as number)}
-            />
-          </div>
-          <div className="w-full px-4">
-            <label htmlFor="saturation-slider" className="block text-sm mb-1">
-              Saturation: {saturation.toFixed(2)}
-            </label>
-            <Slider
-              id="saturation-slider"
-              min={0}
-              max={2}
-              step={0.05}
-              value={saturation}
-              onChange={(_, v) => setSaturation(v as number)}
-            />
+        <div className="flex flex-col items-center justify-start flex-1">
+          <div className="border rounded-lg p-4 w-full max-w-sm mx-auto flex flex-col items-center gap-4">
+            <h2 className="text-lg font-semibold">Settings</h2>
+            <ol className="list-decimal pl-5 space-y-2 w-full">
+              <li>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={autoAlign}
+                    onChange={(e) => setAutoAlign(e.target.checked)}
+                  />
+                  Auto Alignment
+                </label>
+              </li>
+              <li>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={antiGhost}
+                    onChange={(e) => setAntiGhost(e.target.checked)}
+                  />
+                  Anti-Ghosting
+                </label>
+              </li>
+              <li>
+                <div className="w-full">
+                  <label htmlFor="contrast-slider" className="block text-sm mb-1">
+                    Contrast: {contrast.toFixed(2)}
+                  </label>
+                  <Slider
+                    id="contrast-slider"
+                    min={0}
+                    max={2}
+                    step={0.05}
+                    value={contrast}
+                    onChange={(_, v) => setContrast(v as number)}
+                  />
+                </div>
+              </li>
+              <li>
+                <div className="w-full">
+                  <label htmlFor="saturation-slider" className="block text-sm mb-1">
+                    Saturation: {saturation.toFixed(2)}
+                  </label>
+                  <Slider
+                    id="saturation-slider"
+                    min={0}
+                    max={2}
+                    step={0.05}
+                    value={saturation}
+                    onChange={(_, v) => setSaturation(v as number)}
+                  />
+                </div>
+              </li>
+            </ol>
           </div>
         </div>
 
@@ -130,7 +145,7 @@ export default function Home() {
           <Button type="submit" variant="contained">
             Create HDR
           </Button>
-          {loading && <p>Processing...</p>}
+          {loading && <CircularProgress />}
           {resultUrl && (
             <div className="flex flex-col items-end gap-2">
               <img src={resultUrl} className="w-48 rounded" />
