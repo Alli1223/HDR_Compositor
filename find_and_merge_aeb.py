@@ -5,9 +5,19 @@ import cv2
 import numpy as np
 from datetime import datetime, timedelta
 try:  # support running as a script or a package module
-    from .hdr_utils import get_medium_exposure_image, enhance_image
+    from .hdr_utils import (
+        get_medium_exposure_image,
+        enhance_image,
+        align_images,
+        remove_ghosts,
+    )
 except ImportError:  # pragma: no cover - fallback for direct execution
-    from hdr_utils import get_medium_exposure_image, enhance_image
+    from hdr_utils import (
+        get_medium_exposure_image,
+        enhance_image,
+        align_images,
+        remove_ghosts,
+    )
 
 def find_aeb_images(directory):
     aeb_images = []
@@ -84,20 +94,29 @@ def load_images(image_paths):
         images.append(img)
     return images
 
-def create_hdr(images, exposure_times):
-    # Convert exposure times to the format expected by OpenCV (numpy array)
-    times = np.array(exposure_times, dtype=np.float32)
+def create_hdr(
+    images,
+    exposure_times,
+    align: bool = False,
+    deghost: bool = False,
+):
+    """Create an HDR image with optional alignment and deghosting."""
+    proc_images = images
+    if align:
+        proc_images = align_images(proc_images)
+    if deghost:
+        proc_images = remove_ghosts(proc_images)
 
-    # Existing HDR creation code, now including `times` in the `process` call
+    times = np.array(exposure_times, dtype=np.float32)
     merge_debevec = cv2.createMergeDebevec()
-    hdr = merge_debevec.process(images, times=times)
+    hdr = merge_debevec.process(proc_images, times=times)
     return hdr
 
 
 def save_hdr_image(hdr_image, save_path, group_index, images=None, exposure_times=None):
     tonemapMantiuk = cv2.createTonemapMantiuk()
-    tonemapMantiuk.setSaturation(1.6)
-    tonemapMantiuk.setScale(0.7)
+    tonemapMantiuk.setSaturation(1.0)
+    tonemapMantiuk.setScale(1.0)
     ldr = tonemapMantiuk.process(hdr_image.copy())
     ldr_8bit = np.clip(ldr * 255, 0, 255).astype('uint8')
 
