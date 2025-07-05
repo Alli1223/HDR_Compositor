@@ -1,0 +1,6 @@
+# Exclude unneeded files from build context
+.git
+images
+output
+frontend/node_modules
+frontend/.next
