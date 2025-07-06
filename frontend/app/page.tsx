@@ -81,7 +81,7 @@ export default function Home() {
           )}
         </div>
 
-        {/* Middle column: settings */}
+        {/* Middle column: settings and result */}
         <div className="flex flex-col items-center justify-start flex-1">
           <div className="border rounded-lg p-4 w-full max-w-sm mx-auto flex flex-col items-center gap-4">
             <h2 className="text-lg font-semibold">Settings</h2>
@@ -138,22 +138,22 @@ export default function Home() {
               </li>
             </ol>
           </div>
-        </div>
-
-        {/* Right column: create button and result */}
-        <div className="flex flex-col items-end gap-4 w-1/3">
-          <Button type="submit" variant="contained">
-            Create HDR
-          </Button>
-          {loading && <CircularProgress />}
           {resultUrl && (
-            <div className="flex flex-col items-end gap-2">
-              <img src={resultUrl} className="w-48 rounded" />
+            <div className="mt-4 flex flex-col items-center gap-2">
+              <img src={resultUrl} className="w-96 rounded" />
               <a href={resultUrl} download="hdr_result.jpg">
                 <Button variant="outlined">Download Result</Button>
               </a>
             </div>
           )}
+        </div>
+
+        {/* Right column: create button */}
+        <div className="flex flex-col items-start gap-4 w-1/3">
+          <Button type="submit" variant="contained">
+            Create HDR
+          </Button>
+          {loading && <CircularProgress />}
         </div>
       </form>
     </main>
