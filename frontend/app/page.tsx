@@ -16,7 +16,7 @@ export default function Home() {
   const [contrast, setContrast] = useState(1.0);
   const [saturation, setSaturation] = useState(1.0);
 
-  const handleFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSingleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files;
     setFiles(f);
     previews.forEach((u) => URL.revokeObjectURL(u));
@@ -27,7 +27,19 @@ export default function Home() {
       const arr = Array.from(f);
       const urls = arr.map((file) => URL.createObjectURL(file));
       setPreviews(urls);
+    } else {
+      setPreviews([]);
+    }
+  };
 
+  const handleBatchChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files;
+    setFiles(null);
+    previews.forEach((u) => URL.revokeObjectURL(u));
+    groupPreviews.flat().forEach((u) => URL.revokeObjectURL(u));
+    setPreviews([]);
+    if (f) {
+      const arr = Array.from(f);
       const formData = new FormData();
       arr.forEach((file) => formData.append("images", file));
       try {
@@ -47,7 +59,8 @@ export default function Home() {
         console.error("Failed to group images", err);
       }
     } else {
-      setPreviews([]);
+      setGroups([]);
+      setGroupPreviews([]);
     }
   };
 
@@ -89,19 +102,34 @@ export default function Home() {
       <form onSubmit={handleSubmit} className="flex w-full gap-4">
         {/* Left column: file input and previews */}
         <div className="flex flex-col items-start gap-4 w-1/3">
-          <input
-            id="file-input"
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleFilesChange}
-            className="hidden"
-          />
-          <label htmlFor="file-input">
-            <Button variant="contained" component="span">
-              Select Images
-            </Button>
-          </label>
+          <div className="flex gap-2">
+            <input
+              id="file-input-single"
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleSingleChange}
+              className="hidden"
+            />
+            <label htmlFor="file-input-single">
+              <Button variant="contained" component="span">
+                Select Images for One HDR
+              </Button>
+            </label>
+            <input
+              id="file-input-batch"
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleBatchChange}
+              className="hidden"
+            />
+            <label htmlFor="file-input-batch">
+              <Button variant="contained" component="span">
+                Batch HDR Detect
+              </Button>
+            </label>
+          </div>
           {previews.length > 0 && (
             <div className="border rounded-lg p-2">
               <div className="grid grid-cols-2 gap-2">
