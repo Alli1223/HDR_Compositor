@@ -304,11 +304,11 @@ export default function Home() {
   return (
     <main className="flex flex-col items-center p-4 gap-4">
       <Paper
-        variant="outlined"
+        elevation={3}
         className={`p-8 text-center w-full max-w-xl cursor-pointer ${
           dragging ? "bg-gray-100" : ""
         }`}
-        sx={{ borderStyle: "dashed", borderWidth: 2 }}
+        sx={{ borderStyle: "dashed", borderWidth: 2, borderColor: "primary.main" }}
         onDragOver={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -340,7 +340,7 @@ export default function Home() {
       )}
 
       {queue.length > 0 && (
-        <Paper className="w-full max-w-xl p-2" elevation={2}>
+        <Paper className="w-full max-w-xl p-2" elevation={3}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>
             Processing Queue
           </Typography>
@@ -391,21 +391,21 @@ export default function Home() {
               )}
             </div>
             {groups[0].resultUrl && (
-              <Paper className="flex flex-col items-center gap-2 p-2" elevation={2}>
+              <Paper className="flex flex-col items-center gap-2 p-2" elevation={3}>
                 <Typography variant="subtitle2">HDR Result</Typography>
                 <img
                   src={groups[0].resultUrl}
                   className="w-48 h-48 object-cover rounded-lg"
                 />
                 <a href={groups[0].resultUrl} download="hdr_result.jpg">
-                  <Button variant="outlined" size="small">Download</Button>
+                  <Button variant="outlined" color="secondary" size="small">Download</Button>
                 </a>
               </Paper>
             )}
           </div>
           {groups[0].resultUrl && (
             <div className="flex justify-end mt-2">
-              <Button variant="outlined" onClick={handleDownloadAll}>
+              <Button variant="outlined" color="secondary" onClick={handleDownloadAll}>
                 Download All
               </Button>
             </div>
@@ -448,14 +448,14 @@ export default function Home() {
                   )}
                 </div>
                 {g.resultUrl && (
-                  <Paper className="flex flex-col items-center gap-2 p-2" elevation={2}>
+                  <Paper className="flex flex-col items-center gap-2 p-2" elevation={3}>
                     <Typography variant="subtitle2">HDR Result</Typography>
                     <img
                       src={g.resultUrl}
                       className="w-48 h-48 object-cover rounded-lg"
                     />
                     <a href={g.resultUrl} download={`hdr_group_${idx + 1}.jpg`}>
-                      <Button size="small" variant="outlined">Download</Button>
+                      <Button size="small" variant="outlined" color="secondary">Download</Button>
                     </a>
                   </Paper>
                 )}
@@ -467,7 +467,7 @@ export default function Home() {
               Create All
             </Button>
             {groups.some((g) => g.resultUrl) && (
-              <Button variant="outlined" onClick={handleDownloadAll}>
+              <Button variant="outlined" color="secondary" onClick={handleDownloadAll}>
                 Download All
               </Button>
             )}
