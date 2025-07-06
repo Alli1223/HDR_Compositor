@@ -5,6 +5,12 @@ import { computeHash, hamming, createThumbnail } from "./lib/imageHash";
 import Button from "@mui/material/Button";
 import Slider from "@mui/material/Slider";
 import CircularProgress from "@mui/material/CircularProgress";
+import LinearProgress from "@mui/material/LinearProgress";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemText from "@mui/material/ListItemText";
+import Paper from "@mui/material/Paper";
+import Typography from "@mui/material/Typography";
 
 type Settings = {
   autoAlign: boolean;
@@ -27,6 +33,8 @@ export default function Home() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [dragging, setDragging] = useState(false);
   const [queue, setQueue] = useState<number[]>([]);
+  const [thumbLoading, setThumbLoading] = useState(false);
+  const [thumbProgress, setThumbProgress] = useState(0);
   const processingRef = useRef(false);
 
   const resetURLs = (gs: Group[]) => {
@@ -42,7 +50,11 @@ export default function Home() {
       return;
     }
     const newGroups: Group[] = [];
-    for (const file of Array.from(files)) {
+    const arr = Array.from(files);
+    setThumbLoading(true);
+    setThumbProgress(0);
+    for (let i = 0; i < arr.length; i++) {
+      const file = arr[i];
       const url = await createThumbnail(file);
       const hash = await computeHash(file);
       let group = newGroups.find((g) => hamming(g.hash, hash) <= 10);
@@ -58,7 +70,9 @@ export default function Home() {
       }
       group.urls.push(url);
       group.files.push(file);
+      setThumbProgress(Math.round(((i + 1) / arr.length) * 100));
     }
+    setThumbLoading(false);
     setGroups(newGroups);
   };
 
@@ -271,15 +285,31 @@ export default function Home() {
         />
       </div>
 
-      {queue.length > 0 && (
-        <div className="w-full max-w-xl border rounded-lg p-2">
-          <p className="text-sm font-semibold mb-1">Processing Queue:</p>
-          <ul className="list-disc list-inside text-sm">
-            {queue.map((idx, i) => (
-              <li key={i}>Group {idx + 1}</li>
-            ))}
-          </ul>
+      {thumbLoading && (
+        <div className="w-full max-w-xl mt-2">
+          <LinearProgress variant="determinate" value={thumbProgress} />
         </div>
+      )}
+
+      {queue.length > 0 && (
+        <Paper className="w-full max-w-xl p-2" elevation={2}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            Processing Queue
+          </Typography>
+          <List dense disablePadding>
+            {queue.map((idx, i) => (
+              <ListItem key={i} sx={{ display: "block" }}>
+                <ListItemText
+                  primary={`Group ${idx + 1}`}
+                  secondary={groups[idx].status}
+                />
+                {i === 0 && groups[idx].status === "processing" && (
+                  <LinearProgress sx={{ mt: 1 }} />
+                )}
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
       )}
 
       {groups.length === 1 && (
@@ -296,7 +326,12 @@ export default function Home() {
                 Create HDR
               </Button>
               {groups[0].status && groups[0].status !== "idle" && (
-                <p className="text-sm mt-1">Status: {groups[0].status}</p>
+                <>
+                  <p className="text-sm mt-1">Status: {groups[0].status}</p>
+                  {groups[0].status === "processing" && (
+                    <LinearProgress sx={{ mt: 1 }} />
+                  )}
+                </>
               )}
             </div>
             {groups[0].resultUrl && (
@@ -343,7 +378,12 @@ export default function Home() {
                     Create HDR
                   </Button>
                   {g.status && g.status !== "idle" && (
-                    <p className="text-xs mt-1">Status: {g.status}</p>
+                    <>
+                      <p className="text-xs mt-1">Status: {g.status}</p>
+                      {g.status === "processing" && (
+                        <LinearProgress sx={{ mt: 1 }} />
+                      )}
+                    </>
                   )}
                 </div>
                 {g.resultUrl && (
