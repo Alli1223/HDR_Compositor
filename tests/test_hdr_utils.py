@@ -63,3 +63,13 @@ def test_tonemap_preserves_highlights():
     ldr = tonemap_mantiuk(hdr)
     # Top-left pixel corresponds to the bright spot in all exposures
     assert ldr[0, 0].mean() > 200
+
+
+def test_tonemap_gamma_brightness():
+    base = np.arange(16 * 3, dtype=np.uint8).reshape(4, 4, 3)
+    images = [base, base + 20, base + 40]
+    times = [1 / 30, 1 / 60, 1 / 125]
+    hdr = create_hdr(images, times)
+    normal = tonemap_mantiuk(hdr)
+    adjusted = tonemap_mantiuk(hdr, gamma=0.5, brightness=1.5)
+    assert adjusted.mean() >= normal.mean()
