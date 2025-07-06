@@ -49,3 +49,17 @@ def test_align_and_deghost():
     ghosted[5, 5] = [0, 0, 255]
     deghosted = remove_ghosts([img1, ghosted], threshold=10)
     assert tuple(deghosted[1][5, 5]) == tuple(img1[5, 5])
+
+
+def test_tonemap_preserves_highlights():
+    """Very bright areas should remain bright after tonemapping."""
+    images = []
+    for val in (10, 20, 30):
+        img = np.full((2, 2, 3), val, dtype=np.uint8)
+        img[0, 0] = [255, 255, 255]
+        images.append(img)
+    times = [1 / 30, 1 / 60, 1 / 125]
+    hdr = create_hdr(images, times)
+    ldr = tonemap_mantiuk(hdr)
+    # Top-left pixel corresponds to the bright spot in all exposures
+    assert ldr[0, 0].mean() > 200

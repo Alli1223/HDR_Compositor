@@ -38,9 +38,25 @@ def tonemap_mantiuk(
     saturation: float = 1.0,
     contrast: float = 1.0,
 ) -> np.ndarray:
-    """Tonemap an HDR image using Mantiuk algorithm and enhance the result."""
-    tonemap = cv2.createTonemapMantiuk(gamma=1.0, scale=contrast, saturation=saturation)
-    ldr = tonemap.process(hdr_image.copy())
+    """Tonemap an HDR image using Mantiuk algorithm and enhance the result.
+
+    OpenCV's tonemapping expects the input HDR values to be in the ``0..1``
+    range. Real world radiance maps can easily exceed this, leading to
+    negative or clipped values after tonemapping which in turn may produce
+    black pixels in very bright areas. Normalising the HDR data before
+    tonemapping keeps highlights white and prevents those artefacts."""
+
+    # Normalise to 0..1 to avoid extreme values causing dark highlights
+    hdr_norm = cv2.normalize(
+        hdr_image, None, alpha=0.0, beta=1.0, norm_type=cv2.NORM_MINMAX
+    )
+
+    tonemap = cv2.createTonemapMantiuk(
+        gamma=1.0, scale=contrast, saturation=saturation
+    )
+    ldr = tonemap.process(hdr_norm.copy())
+    # Replace any NaN or infinity values before converting to 8 bit
+    ldr = np.nan_to_num(ldr, nan=0.0, posinf=1.0, neginf=0.0)
     ldr_8bit = np.clip(ldr * 255, 0, 255).astype("uint8")
     return enhance_image(ldr_8bit, reference_image)
 
