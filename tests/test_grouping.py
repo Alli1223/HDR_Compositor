@@ -10,6 +10,7 @@ from HDR_Compositor.find_and_merge_aeb import (
     group_images_by_datetime,
     group_images_by_similarity,
 )
+import HDR_Compositor.group_uploads as group_uploads
 import HDR_Compositor.find_and_merge_aeb as find_and_merge_aeb
 
 
@@ -65,3 +66,15 @@ def test_group_images_similarity(monkeypatch):
         similarity_threshold=30,
     )
     assert groups == [["a.jpg", "b.jpg"], ["c.jpg"]]
+
+
+def test_group_uploads_main(monkeypatch, capsys):
+    monkeypatch.setattr(
+        group_uploads, "find_aeb_images_and_exposure_times_from_list", lambda p: (p, [])
+    )
+    monkeypatch.setattr(
+        group_uploads, "group_images_by_similarity", lambda p, time_threshold=None: [p]
+    )
+    group_uploads.main(["x.jpg", "y.jpg"])
+    out = capsys.readouterr().out.strip()
+    assert out == '[["x.jpg", "y.jpg"]]'
