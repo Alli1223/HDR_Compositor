@@ -1,13 +1,13 @@
 .PHONY: run
 
 run:
-	docker build -f Dockerfile.web -t hdr-webapp .
+	docker build -f Dockerfile.web -t aeb-webapp .
 	# run container and stop it cleanly on Ctrl+C
-	docker run --rm -p 3000:3000 --name hdr-webapp-container hdr-webapp & \
-	pid=$$!; trap "docker stop hdr-webapp-container >/dev/null" INT TERM; \
+	docker run --rm -p 3000:3000 --name aeb-webapp-container aeb-webapp & \
+	pid=$$!; trap "docker stop aeb-webapp-container >/dev/null" INT TERM; \
 	wait $$pid
 
-# Run the HDR GUI application
+# Run the AEB compositor GUI
 #run:
-#	python hdr_gui.py
+#	python aeb_gui.py
 

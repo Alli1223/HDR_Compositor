@@ -18,13 +18,13 @@ except ImportError:  # pragma: no cover - fallback for direct execution
     )
     from hdr_utils import get_medium_exposure_image, tonemap_mantiuk
 
-class HDRGui:
+class AEBGui:
     def __init__(self):
         self.file_paths = []
         self.hdr_image = None
         self.ldr_image = None
 
-        with dpg.window(label="HDR Compositor", width=800, height=600):
+        with dpg.window(label="AEB Compositor", width=800, height=600):
             dpg.add_button(label="Select Images", callback=self.select_files)
             self.listbox = dpg.add_listbox(items=[], num_items=5, width=780)
             dpg.add_button(label="Create HDR", callback=self.create_hdr_image)
@@ -86,14 +86,14 @@ class HDRGui:
 
 def main():
     dpg.create_context()
-    gui = HDRGui()
+    gui = AEBGui()
     with dpg.file_dialog(directory_selector=False, show=False, callback=gui._file_selected, id="file_dialog", multiselect=True):
         dpg.add_file_extension(".jpg", color=(255, 255, 255, 255))
         dpg.add_file_extension(".jpeg", color=(255, 255, 255, 255))
         dpg.add_file_extension(".png", color=(255, 255, 255, 255))
         dpg.add_file_extension(".tif", color=(255, 255, 255, 255))
         dpg.add_file_extension(".tiff", color=(255, 255, 255, 255))
-    dpg.create_viewport(title="HDR Compositor", width=800, height=600)
+    dpg.create_viewport(title="AEB Compositor", width=800, height=600)
     dpg.setup_dearpygui()
     dpg.show_viewport()
     dpg.set_primary_window(gui.image_group, True)

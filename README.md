@@ -1,4 +1,4 @@
-# HDR Compositor
+# AEB Compositor
 
 This repository contains tools for merging Auto Exposure Bracketing (AEB) images into a single HDR photograph.
 
@@ -12,12 +12,12 @@ python find_and_merge_aeb.py <input_dir> <output_dir>
 
 ## GUI Application
 
-A simple DearPyGui based application is provided in `hdr_gui.py`. It allows you to select 3–5 images manually and create an HDR image which can be saved back to the same directory.
+A simple DearPyGui based application is provided in `aeb_gui.py`. It allows you to select 3–5 images manually and create an HDR image which can be saved back to the same directory.
 
 Run the GUI with:
 
 ```bash
-python hdr_gui.py
+python aeb_gui.py
 ```
 
 After selecting images, click **Create HDR** and then **Save Result** to write `hdr_result.jpg` next to the chosen files.
