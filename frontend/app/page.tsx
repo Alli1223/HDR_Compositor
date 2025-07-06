@@ -6,14 +6,16 @@ import Button from "@mui/material/Button";
 import Slider from "@mui/material/Slider";
 import CircularProgress from "@mui/material/CircularProgress";
 
+type Group = {
+  hash: Hash;
+  urls: string[];
+  files: File[];
+  resultUrl?: string;
+};
+
 export default function Home() {
-  const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [groups, setGroups] = useState<{
-    hash: Hash;
-    urls: string[];
-    files: File[];
-  }[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [autoAlign, setAutoAlign] = useState(false);
   const [antiGhost, setAntiGhost] = useState(false);
   const [contrast, setContrast] = useState(1.0);
@@ -21,9 +23,12 @@ export default function Home() {
 
   const handleFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files;
-    groups.forEach((g) => g.urls.forEach((u) => URL.revokeObjectURL(u)));
+    groups.forEach((g) => {
+      g.urls.forEach((u) => URL.revokeObjectURL(u));
+      if (g.resultUrl) URL.revokeObjectURL(g.resultUrl);
+    });
     if (f) {
-      const newGroups: { hash: Hash; urls: string[]; files: File[] }[] = [];
+      const newGroups: Group[] = [];
       for (const file of Array.from(f)) {
         const url = URL.createObjectURL(file);
         const hash = await computeHash(file);
@@ -41,8 +46,9 @@ export default function Home() {
     }
   };
 
-  const handleCreateHDR = async (group: { files: File[] }) => {
-    if (group.files.length === 0) return;
+  const handleCreateHDR = async (index: number) => {
+    const group = groups[index];
+    if (!group || group.files.length === 0) return;
     const formData = new FormData();
     group.files.forEach((f) => formData.append("images", f));
     formData.append("autoAlign", autoAlign ? "1" : "0");
@@ -50,20 +56,35 @@ export default function Home() {
     formData.append("contrast", (2 - contrast).toString());
     formData.append("saturation", (2 - saturation).toString());
     setLoading(true);
-    setResultUrl(null);
     const res = await fetch("/api/process", { method: "POST", body: formData });
     setLoading(false);
     if (res.ok) {
       const blob = await res.blob();
-      setResultUrl(URL.createObjectURL(blob));
+      const url = URL.createObjectURL(blob);
+      setGroups((gs) => {
+        const copy = [...gs];
+        const prev = copy[index].resultUrl;
+        if (prev) URL.revokeObjectURL(prev);
+        copy[index] = { ...copy[index], resultUrl: url };
+        return copy;
+      });
     } else {
       alert(await res.text());
     }
   };
 
+  const handleCreateAll = async () => {
+    for (let i = 0; i < groups.length; i++) {
+      await handleCreateHDR(i);
+    }
+  };
+
   useEffect(() => {
     return () => {
-      groups.forEach((g) => g.urls.forEach((u) => URL.revokeObjectURL(u)));
+      groups.forEach((g) => {
+        g.urls.forEach((u) => URL.revokeObjectURL(u));
+        if (g.resultUrl) URL.revokeObjectURL(g.resultUrl);
+      });
     };
   }, [groups]);
 
@@ -87,6 +108,11 @@ export default function Home() {
           </label>
           {groups.length > 0 && (
             <div className="border rounded-lg p-2 w-full">
+              <div className="flex justify-end mb-2">
+                <Button size="small" variant="contained" onClick={handleCreateAll}>
+                  Create All
+                </Button>
+              </div>
               {groups.map((g, idx) => (
                 <div key={idx} className="mb-4">
                   <h3 className="text-sm font-semibold mb-1">Group {idx + 1}</h3>
@@ -99,9 +125,16 @@ export default function Home() {
                       />
                     ))}
                   </div>
-                  <Button size="small" variant="contained" onClick={() => handleCreateHDR(g)}>
-                    Create HDR
-                  </Button>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Button size="small" variant="contained" onClick={() => handleCreateHDR(idx)}>
+                      Create HDR
+                    </Button>
+                    {g.resultUrl && (
+                      <a href={g.resultUrl} download={`hdr_group_${idx + 1}.jpg`}>
+                        <Button size="small" variant="outlined">Download</Button>
+                      </a>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -165,14 +198,6 @@ export default function Home() {
               </li>
             </ol>
           </div>
-          {resultUrl && (
-            <div className="mt-4 flex flex-col items-center gap-2">
-              <img src={resultUrl} className="w-96 rounded" />
-              <a href={resultUrl} download="hdr_result.jpg">
-                <Button variant="outlined">Download Result</Button>
-              </a>
-            </div>
-          )}
         </div>
 
         {/* Right column: loader */}
