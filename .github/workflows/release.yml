@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+      - name: Run tests
+        run: pytest -q
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+          cd ..
+      - name: Set version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i "s/^__version__ = .*/__version__ = \"$VERSION\"/" __init__.py
+      - name: Package release
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          zip -r HDR_Compositor-$VERSION.zip . -x '*.git*' -x 'frontend/node_modules/*'
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: HDR_Compositor-${GITHUB_REF_NAME#v}.zip
