@@ -6,49 +6,77 @@ import Button from "@mui/material/Button";
 import Slider from "@mui/material/Slider";
 import CircularProgress from "@mui/material/CircularProgress";
 
+type Settings = {
+  autoAlign: boolean;
+  antiGhost: boolean;
+  contrast: number;
+  saturation: number;
+};
+
 type Group = {
   hash: Hash;
   urls: string[];
   files: File[];
   resultUrl?: string;
+  settings: Settings;
 };
 
 export default function Home() {
   const [loading, setLoading] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [autoAlign, setAutoAlign] = useState(false);
-  const [antiGhost, setAntiGhost] = useState(false);
-  const [contrast, setContrast] = useState(1.0);
-  const [saturation, setSaturation] = useState(1.0);
+  const [dragging, setDragging] = useState(false);
 
-  const handleFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files;
-    groups.forEach((g) => {
+  const resetURLs = (gs: Group[]) => {
+    gs.forEach((g) => {
       g.urls.forEach((u) => URL.revokeObjectURL(u));
       if (g.resultUrl) URL.revokeObjectURL(g.resultUrl);
     });
-    if (f) {
-      const newGroups: Group[] = [];
-      for (const file of Array.from(f)) {
-        const url = URL.createObjectURL(file);
-        const hash = await computeHash(file);
-        let group = newGroups.find((g) => hamming(g.hash, hash) <= 10);
-        if (!group) {
-          group = { hash, urls: [], files: [] };
-          newGroups.push(group);
-        }
-        group.urls.push(url);
-        group.files.push(file);
-      }
-      setGroups(newGroups);
-    } else {
+  };
+
+  const handleFiles = async (files: FileList | File[]) => {
+    resetURLs(groups);
+    if (!files || files.length === 0) {
       setGroups([]);
+      return;
+    }
+    const newGroups: Group[] = [];
+    for (const file of Array.from(files)) {
+      const url = URL.createObjectURL(file);
+      const hash = await computeHash(file);
+      let group = newGroups.find((g) => hamming(g.hash, hash) <= 10);
+      if (!group) {
+        group = {
+          hash,
+          urls: [],
+          files: [],
+          settings: { autoAlign: false, antiGhost: false, contrast: 1, saturation: 1 },
+        };
+        newGroups.push(group);
+      }
+      group.urls.push(url);
+      group.files.push(file);
+    }
+    setGroups(newGroups);
+  };
+
+  const handleFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files;
+    if (f) await handleFiles(f);
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(false);
+    if (e.dataTransfer.files) {
+      await handleFiles(e.dataTransfer.files);
     }
   };
 
   const handleCreateHDR = async (index: number) => {
     const group = groups[index];
     if (!group || group.files.length === 0) return;
+    const { autoAlign, antiGhost, contrast, saturation } = group.settings;
     const formData = new FormData();
     group.files.forEach((f) => formData.append("images", f));
     formData.append("autoAlign", autoAlign ? "1" : "0");
@@ -79,132 +107,220 @@ export default function Home() {
     }
   };
 
+  const triggerDownload = (url: string, name: string) => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+  };
+
+  const handleDownloadAll = () => {
+    groups.forEach((g, idx) => {
+      if (g.resultUrl) {
+        const name = groups.length === 1 ?
+          "hdr_result.jpg" : `hdr_group_${idx + 1}.jpg`;
+        triggerDownload(g.resultUrl, name);
+      }
+    });
+  };
+
   useEffect(() => {
     return () => {
-      groups.forEach((g) => {
-        g.urls.forEach((u) => URL.revokeObjectURL(u));
-        if (g.resultUrl) URL.revokeObjectURL(g.resultUrl);
-      });
+      resetURLs(groups);
     };
   }, [groups]);
 
-  return (
-    <main className="flex p-4 gap-4">
-      <div className="flex w-full gap-4">
-        {/* Left column: file input and grouped previews */}
-        <div className="flex flex-col items-start gap-4 w-1/3">
+  const renderSettings = (index: number) => {
+    const g = groups[index];
+    const s = g.settings;
+    return (
+      <div className="border rounded-lg p-4 my-2 flex flex-col gap-4">
+        <label className="flex items-center gap-2">
           <input
-            id="file-input"
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleFilesChange}
-            className="hidden"
+            type="checkbox"
+            checked={s.autoAlign}
+            onChange={(e) =>
+              setGroups((gs) => {
+                const copy = [...gs];
+                copy[index].settings.autoAlign = e.target.checked;
+                return copy;
+              })
+            }
           />
-          <label htmlFor="file-input">
-            <Button variant="contained" component="span">
-              Import Images
-            </Button>
+          Auto Alignment
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={s.antiGhost}
+            onChange={(e) =>
+              setGroups((gs) => {
+                const copy = [...gs];
+                copy[index].settings.antiGhost = e.target.checked;
+                return copy;
+              })
+            }
+          />
+          Anti-Ghosting
+        </label>
+        <div>
+          <label htmlFor={`contrast-${index}`} className="block text-sm mb-1">
+            Contrast: {s.contrast.toFixed(2)}
           </label>
-          {groups.length > 0 && (
-            <div className="border rounded-lg p-2 w-full">
-              <div className="flex justify-end mb-2">
-                <Button size="small" variant="contained" onClick={handleCreateAll}>
-                  Create All
-                </Button>
+          <Slider
+            id={`contrast-${index}`}
+            min={0}
+            max={2}
+            step={0.05}
+            value={s.contrast}
+            onChange={(_, v) =>
+              setGroups((gs) => {
+                const copy = [...gs];
+                copy[index].settings.contrast = v as number;
+                return copy;
+              })
+            }
+          />
+        </div>
+        <div>
+          <label htmlFor={`saturation-${index}`} className="block text-sm mb-1">
+            Saturation: {s.saturation.toFixed(2)}
+          </label>
+          <Slider
+            id={`saturation-${index}`}
+            min={0}
+            max={2}
+            step={0.05}
+            value={s.saturation}
+            onChange={(_, v) =>
+              setGroups((gs) => {
+                const copy = [...gs];
+                copy[index].settings.saturation = v as number;
+                return copy;
+              })
+            }
+          />
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <main className="flex flex-col items-center p-4 gap-4">
+      <div
+        className={`border-2 border-dashed rounded-lg p-8 text-center w-full max-w-xl cursor-pointer ${
+          dragging ? "bg-gray-100" : ""
+        }`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setDragging(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setDragging(false);
+        }}
+        onDrop={handleDrop}
+        onClick={() => document.getElementById("file-input")?.click()}
+      >
+        <p>Drag and drop images here or click to import</p>
+        <input
+          id="file-input"
+          type="file"
+          multiple
+          accept="image/*"
+          className="hidden"
+          onChange={handleFilesChange}
+        />
+      </div>
+
+      {groups.length === 1 && (
+        <div className="w-full max-w-xl">
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                {groups[0].urls.map((src) => (
+                  <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
+                ))}
               </div>
-              {groups.map((g, idx) => (
-                <div key={idx} className="mb-4">
-                  <h3 className="text-sm font-semibold mb-1">Group {idx + 1}</h3>
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    {g.urls.map((src) => (
-                      <img
-                        key={src}
-                        src={src}
-                        className="w-24 h-24 object-cover rounded-lg"
-                      />
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Button size="small" variant="contained" onClick={() => handleCreateHDR(idx)}>
-                      Create HDR
-                    </Button>
-                    {g.resultUrl && (
-                      <a href={g.resultUrl} download={`hdr_group_${idx + 1}.jpg`}>
-                        <Button size="small" variant="outlined">Download</Button>
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))}
+              {renderSettings(0)}
+              <Button variant="contained" onClick={() => handleCreateHDR(0)}>
+                Create HDR
+              </Button>
+            </div>
+            {groups[0].resultUrl && (
+              <div className="flex flex-col items-center gap-2">
+                <img
+                  src={groups[0].resultUrl}
+                  className="w-32 h-32 object-cover rounded-lg"
+                />
+                <a href={groups[0].resultUrl} download="hdr_result.jpg">
+                  <Button variant="outlined" size="small">Download</Button>
+                </a>
+              </div>
+            )}
+          </div>
+          {groups[0].resultUrl && (
+            <div className="flex justify-end mt-2">
+              <Button variant="outlined" onClick={handleDownloadAll}>
+                Download All
+              </Button>
             </div>
           )}
         </div>
+      )}
 
-        {/* Middle column: settings and result */}
-        <div className="flex flex-col items-center justify-start flex-1">
-          <div className="border rounded-lg p-4 w-full max-w-sm mx-auto flex flex-col items-center gap-4">
-            <h2 className="text-lg font-semibold">Settings</h2>
-            <ol className="list-decimal pl-5 space-y-2 w-full">
-              <li>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={autoAlign}
-                    onChange={(e) => setAutoAlign(e.target.checked)}
-                  />
-                  Auto Alignment
-                </label>
-              </li>
-              <li>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={antiGhost}
-                    onChange={(e) => setAntiGhost(e.target.checked)}
-                  />
-                  Anti-Ghosting
-                </label>
-              </li>
-              <li>
-                <div className="w-full">
-                  <label htmlFor="contrast-slider" className="block text-sm mb-1">
-                    Contrast: {contrast.toFixed(2)}
-                  </label>
-                  <Slider
-                    id="contrast-slider"
-                    min={0}
-                    max={2}
-                    step={0.05}
-                    value={contrast}
-                    onChange={(_, v) => setContrast(v as number)}
-                  />
+      {groups.length > 1 && (
+        <div className="w-full max-w-xl">
+          {groups.map((g, idx) => (
+            <div key={idx} className="border rounded-lg p-4 mb-4">
+              <h3 className="text-sm font-semibold mb-2">Group {idx + 1}</h3>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    {g.urls.map((src) => (
+                      <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
+                    ))}
+                  </div>
+                  <details className="mb-2">
+                    <summary>
+                      <Button variant="outlined" size="small">Settings</Button>
+                    </summary>
+                    {renderSettings(idx)}
+                  </details>
+                  <Button variant="contained" size="small" onClick={() => handleCreateHDR(idx)}>
+                    Create HDR
+                  </Button>
                 </div>
-              </li>
-              <li>
-                <div className="w-full">
-                  <label htmlFor="saturation-slider" className="block text-sm mb-1">
-                    Saturation: {saturation.toFixed(2)}
-                  </label>
-                  <Slider
-                    id="saturation-slider"
-                    min={0}
-                    max={2}
-                    step={0.05}
-                    value={saturation}
-                    onChange={(_, v) => setSaturation(v as number)}
-                  />
-                </div>
-              </li>
-            </ol>
+                {g.resultUrl && (
+                  <div className="flex flex-col items-center gap-2">
+                    <img
+                      src={g.resultUrl}
+                      className="w-32 h-32 object-cover rounded-lg"
+                    />
+                    <a href={g.resultUrl} download={`hdr_group_${idx + 1}.jpg`}>
+                      <Button size="small" variant="outlined">Download</Button>
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          <div className="flex justify-end gap-2">
+            <Button variant="contained" onClick={handleCreateAll}>
+              Create All
+            </Button>
+            {groups.some((g) => g.resultUrl) && (
+              <Button variant="outlined" onClick={handleDownloadAll}>
+                Download All
+              </Button>
+            )}
           </div>
         </div>
+      )}
 
-        {/* Right column: loader */}
-        <div className="flex flex-col items-start gap-4 w-1/3">
-          {loading && <CircularProgress />}
-        </div>
-      </div>
+      {loading && <CircularProgress />}
     </main>
   );
 }
