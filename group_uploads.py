@@ -19,7 +19,7 @@ except ImportError:  # pragma: no cover
 
 
 def main(paths):
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     logger = logging.getLogger(__name__)
     logger.info("Grouping %d images", len(paths))
     aeb_images, _ = find_aeb_images_and_exposure_times_from_list(paths)

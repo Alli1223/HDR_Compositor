@@ -66,6 +66,12 @@ def image_hash(img: np.ndarray, size: int = 8) -> np.ndarray:
     return (resized > avg).astype(np.uint8).flatten()
 
 
+def _hash_to_hex(h: np.ndarray) -> str:
+    """Return a hexadecimal string representation of a binary hash."""
+    bits = ''.join('1' if b else '0' for b in h)
+    return f"{int(bits, 2):0{len(h) // 4}x}"
+
+
 def group_images_by_similarity(
     image_paths,
     *,
@@ -81,15 +87,14 @@ def group_images_by_similarity(
 
     logger = logging.getLogger(__name__)
     logger.info("Grouping %d images by similarity", len(image_paths))
+
     sorted_paths = sorted(
         image_paths,
         key=lambda p: extract_datetime(p) or datetime.min,
     )
-    groups = []
-    current_group = []
-    current_dt = None
-    current_hash = None
 
+    # Build list of (path, datetime, hash) while logging hashes
+    items = []
     for path in sorted_paths:
         dt = extract_datetime(path)
         if dt is None:
@@ -98,6 +103,30 @@ def group_images_by_similarity(
         if img is None:
             continue
         h = image_hash(img)
+        logger.info("Hash for %s: %s", path, _hash_to_hex(h))
+        items.append((path, dt, h))
+
+    # Log pairwise similarities
+    for i, (p1, _d1, h1) in enumerate(items):
+        for p2, _d2, h2 in items[i + 1 :]:
+            distance = np.count_nonzero(h1 != h2)
+            diff_percent = distance / len(h1) * 100
+            logger.info(
+                "Similarity %s vs %s: %.2f%% (%d/%d)",
+                p1,
+                p2,
+                diff_percent,
+                distance,
+                len(h1),
+            )
+
+    # Perform grouping
+    groups = []
+    current_group = []
+    current_dt = None
+    current_hash = None
+
+    for path, dt, h in items:
         if not current_group:
             current_group = [path]
             current_dt = dt
