@@ -57,6 +57,7 @@ class HDRGui:
         self.groups = group_images_by_similarity(
             self.file_paths,
             time_threshold=timedelta(seconds=0.5),
+            hash_percent_threshold=10.0,
         )
         self.group_labels = [f"Group {i+1} ({len(g)} images)" for i, g in enumerate(self.groups)]
         dpg.configure_item(self.listbox, items=self.group_labels)

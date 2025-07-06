@@ -20,7 +20,9 @@ except ImportError:  # pragma: no cover
 def main(paths):
     aeb_images, _ = find_aeb_images_and_exposure_times_from_list(paths)
     groups = group_images_by_similarity(
-        aeb_images, time_threshold=timedelta(seconds=0.5)
+        aeb_images,
+        time_threshold=timedelta(seconds=0.5),
+        hash_percent_threshold=10.0,
     )
     json.dump(groups, sys.stdout)
 

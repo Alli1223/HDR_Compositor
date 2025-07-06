@@ -51,19 +51,20 @@ def test_group_images_similarity(monkeypatch):
         "c.jpg": datetime.datetime(2023, 1, 1, 13, 0, 0, 200000),
     }
 
-    images = {
-        "a.jpg": np.zeros((5, 5, 3), dtype=np.uint8),
-        "b.jpg": np.zeros((5, 5, 3), dtype=np.uint8) + 5,
-        "c.jpg": np.full((5, 5, 3), 255, dtype=np.uint8),
+    hash_map = {
+        "a.jpg": np.zeros(64, dtype=np.uint8),
+        "b.jpg": np.concatenate([np.zeros(60, dtype=np.uint8), np.ones(4, dtype=np.uint8)]),
+        "c.jpg": np.ones(64, dtype=np.uint8),
     }
 
     monkeypatch.setattr(find_and_merge_aeb, "extract_datetime", lambda p: dates[p])
-    monkeypatch.setattr(find_and_merge_aeb.cv2, "imread", lambda p: images[p])
+    monkeypatch.setattr(find_and_merge_aeb.cv2, "imread", lambda p: p)
+    monkeypatch.setattr(find_and_merge_aeb, "image_hash", lambda img, size=8: hash_map[img])
 
     groups = group_images_by_similarity(
         list(dates.keys()),
         time_threshold=datetime.timedelta(seconds=0.5),
-        similarity_threshold=30,
+        hash_percent_threshold=10.0,
     )
     assert groups == [["a.jpg", "b.jpg"], ["c.jpg"]]
 
@@ -73,7 +74,9 @@ def test_group_uploads_main(monkeypatch, capsys):
         group_uploads, "find_aeb_images_and_exposure_times_from_list", lambda p: (p, [])
     )
     monkeypatch.setattr(
-        group_uploads, "group_images_by_similarity", lambda p, time_threshold=None: [p]
+        group_uploads,
+        "group_images_by_similarity",
+        lambda p, time_threshold=None, hash_percent_threshold=None: [p],
     )
     group_uploads.main(["x.jpg", "y.jpg"])
     out = capsys.readouterr().out.strip()

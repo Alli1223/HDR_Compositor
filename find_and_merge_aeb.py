@@ -57,18 +57,25 @@ def group_images_by_datetime(image_paths, threshold=timedelta(seconds=2)):
             grouped_images[-1][0].append(path)
     return [group for group, _ in grouped_images]
 
+def image_hash(img: np.ndarray, size: int = 8) -> np.ndarray:
+    """Return a simple average hash for the given image."""
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    resized = cv2.resize(gray, (size, size), interpolation=cv2.INTER_AREA)
+    avg = resized.mean()
+    return (resized > avg).astype(np.uint8).flatten()
+
+
 def group_images_by_similarity(
     image_paths,
     *,
     time_threshold: timedelta = timedelta(seconds=0.5),
-    similarity_threshold: float = 30.0,
+    hash_percent_threshold: float = 10.0,
 ):
-    """Group images taken within `time_threshold` that are visually similar.
+    """Group images taken within ``time_threshold`` if their hashes are similar.
 
-    Similarity is evaluated by the mean absolute pixel difference between the
-    first image of a group and the candidate image. Images whose difference is
-    less than or equal to ``similarity_threshold`` (0-255 scale) are grouped
-    together.
+    Images are hashed using :func:`image_hash`. Two images are considered part of
+    the same group when their Hamming distance is within ``hash_percent_threshold``
+    percent of the hash length.
     """
 
     sorted_paths = sorted(
@@ -78,7 +85,7 @@ def group_images_by_similarity(
     groups = []
     current_group = []
     current_dt = None
-    current_img = None
+    current_hash = None
 
     for path in sorted_paths:
         dt = extract_datetime(path)
@@ -87,22 +94,24 @@ def group_images_by_similarity(
         img = cv2.imread(path)
         if img is None:
             continue
+        h = image_hash(img)
         if not current_group:
             current_group = [path]
             current_dt = dt
-            current_img = img
+            current_hash = h
             continue
 
         time_diff = dt - current_dt
-        diff = np.mean(cv2.absdiff(current_img, img))
+        distance = np.count_nonzero(current_hash != h)
+        diff_percent = distance / len(h) * 100
 
-        if time_diff <= time_threshold and diff <= similarity_threshold:
+        if time_diff <= time_threshold and diff_percent <= hash_percent_threshold:
             current_group.append(path)
         else:
             groups.append(current_group)
             current_group = [path]
             current_dt = dt
-            current_img = img
+            current_hash = h
 
     if current_group:
         groups.append(current_group)
