@@ -54,3 +54,17 @@ pip install -r requirements.txt
 ```
 
 The tools rely on `opencv-python-headless`, `numpy` and `dearpygui` in addition to `exiftool`. On Debian based systems you can install exiftool with `apt-get install exiftool`.
+
+### Release Process
+
+Tagged commits with names starting with `v` trigger an automated workflow.
+Pushing a tag such as `v1.0.0` will run the test suite, build the frontend and
+upload a zipped archive to the GitHub release page. Create a release with:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+After the workflow completes the file `HDR_Compositor-1.0.0.zip` will be
+attached to the release.
