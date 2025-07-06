@@ -1,26 +1,31 @@
 import os
 import cv2
 import numpy as np
+from datetime import timedelta
 import dearpygui.dearpygui as dpg
 
 try:  # support running as part of a package or as a script
     from .find_and_merge_aeb import (
-        find_aeb_images_and_exposure_times_from_list,
         load_images,
         create_hdr,
+        group_images_by_datetime,
+        get_exposure_times_from_list,
     )
     from .hdr_utils import get_medium_exposure_image, tonemap_mantiuk
 except ImportError:  # pragma: no cover - fallback for direct execution
     from find_and_merge_aeb import (
-        find_aeb_images_and_exposure_times_from_list,
         load_images,
         create_hdr,
+        group_images_by_datetime,
+        get_exposure_times_from_list,
     )
     from hdr_utils import get_medium_exposure_image, tonemap_mantiuk
 
 class HDRGui:
     def __init__(self):
         self.file_paths = []
+        self.groups = []
+        self.group_labels = []
         self.hdr_image = None
         self.ldr_image = None
 
@@ -37,22 +42,31 @@ class HDRGui:
 
     def _file_selected(self, sender, app_data):
         self.file_paths = list(app_data["selections"].values())
-        dpg.configure_item(self.listbox, items=self.file_paths)
+        self.groups = group_images_by_datetime(self.file_paths, threshold=timedelta(seconds=0.5))
+        self.group_labels = [f"Group {i+1} ({len(g)} images)" for i, g in enumerate(self.groups)]
+        dpg.configure_item(self.listbox, items=self.group_labels)
         dpg.configure_item(self.save_btn, enabled=False)
         dpg.delete_item(self.image_group, children_only=True)
         dpg.add_text("HDR preview will appear here", parent=self.image_group)
 
     def create_hdr_image(self):
-        if len(self.file_paths) < 3:
+        if not self.groups:
             dpg.show_logger()
-            dpg.log_warning("Select at least three images.")
+            dpg.log_warning("No valid image groups found.")
             return
-        aeb_images, exposure_times = find_aeb_images_and_exposure_times_from_list(self.file_paths)
-        if len(aeb_images) < 3:
+        selected_label = dpg.get_value(self.listbox)
+        if not selected_label:
             dpg.show_logger()
-            dpg.log_warning("Selected images do not contain enough AEB exposures.")
+            dpg.log_warning("Select a group to process.")
             return
-        images = load_images(aeb_images)
+        index = self.group_labels.index(selected_label)
+        group_paths = self.groups[index]
+        image_paths, exposure_times = get_exposure_times_from_list(group_paths)
+        if len(image_paths) < 3:
+            dpg.show_logger()
+            dpg.log_warning("Selected group does not contain at least three usable images.")
+            return
+        images = load_images(image_paths)
         self.hdr_image = create_hdr(images, exposure_times)
         ref_image = get_medium_exposure_image(images, exposure_times)
         self.ldr_image = tonemap_mantiuk(self.hdr_image, ref_image)

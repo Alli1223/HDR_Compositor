@@ -57,6 +57,34 @@ def group_images_by_datetime(image_paths, threshold=timedelta(seconds=2)):
             grouped_images[-1][0].append(path)
     return [group for group, _ in grouped_images]
 
+def get_exposure_times_from_list(image_paths):
+    """Return exposure times for the given image paths."""
+    valid_paths = []
+    exposure_times = []
+    for image_path in image_paths:
+        cmd = f'exiftool -ExposureTime -b "{image_path}"'
+        result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, text=True)
+        exposure_time_str = result.stdout.strip()
+        if not exposure_time_str:
+            print(
+                f"Warning: Missing exposure time for image {os.path.basename(image_path)}. Skipping this image."
+            )
+            continue
+        try:
+            exposure_time = float(exposure_time_str)
+        except ValueError:
+            try:
+                numerator, denominator = exposure_time_str.split('/')
+                exposure_time = float(numerator) / float(denominator)
+            except ValueError:
+                print(
+                    f"Warning: Could not parse exposure time for image {os.path.basename(image_path)} with value '{exposure_time_str}'. Skipping this image."
+                )
+                continue
+        valid_paths.append(image_path)
+        exposure_times.append(exposure_time)
+    return valid_paths, exposure_times
+
 def find_aeb_images_and_exposure_times_from_list(image_paths):
     aeb_images = []
     exposure_times = []
