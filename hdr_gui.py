@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import dearpygui.dearpygui as dpg
 from datetime import timedelta
+import logging
 
 try:  # support running as part of a package or as a script
     from .find_and_merge_aeb import (
@@ -23,6 +24,7 @@ except ImportError:  # pragma: no cover - fallback for direct execution
 
 class HDRGui:
     def __init__(self):
+        self.logger = logging.getLogger(__name__)
         self.file_paths = []
         self.groups = []
         self.group_labels = []
@@ -39,13 +41,16 @@ class HDRGui:
                 dpg.add_text("HDR preview will appear here")
 
     def select_files_single(self):
+        self.logger.info("Opening file dialog for single HDR selection")
         dpg.show_item("file_dialog_single")
 
     def select_files_batch(self):
+        self.logger.info("Opening file dialog for batch detection")
         dpg.show_item("file_dialog_batch")
 
     def _files_selected_single(self, sender, app_data):
         self.file_paths = list(app_data["selections"].values())
+        self.logger.info("Selected %d images for single HDR", len(self.file_paths))
         self.groups = []
         dpg.configure_item(self.listbox, items=self.file_paths)
         dpg.configure_item(self.save_btn, enabled=False)
@@ -54,11 +59,15 @@ class HDRGui:
 
     def _files_selected_batch(self, sender, app_data):
         self.file_paths = list(app_data["selections"].values())
+        self.logger.info("Batch selection received %d files", len(self.file_paths))
         self.groups = group_images_by_similarity(
             self.file_paths,
             time_threshold=timedelta(seconds=0.5),
             hash_percent_threshold=10.0,
         )
+        self.logger.info("Detected %d groups", len(self.groups))
+        for i, g in enumerate(self.groups, 1):
+            self.logger.info("Group %d: %s", i, g)
         self.group_labels = [f"Group {i+1} ({len(g)} images)" for i, g in enumerate(self.groups)]
         dpg.configure_item(self.listbox, items=self.group_labels)
         dpg.configure_item(self.save_btn, enabled=False)
@@ -74,8 +83,10 @@ class HDRGui:
                 return
             index = self.group_labels.index(selected_label)
             image_paths = self.groups[index]
+            self.logger.info("Processing group %d with %d images", index + 1, len(image_paths))
         else:
             image_paths = self.file_paths
+            self.logger.info("Processing %d images for single HDR", len(image_paths))
 
         image_paths, exposure_times = get_exposure_times_from_list(image_paths)
         if len(image_paths) < 3:
@@ -113,9 +124,11 @@ class HDRGui:
         cv2.imwrite(save_path, self.ldr_image)
         dpg.show_logger()
         dpg.log_info(f"HDR image saved to {save_path}")
+        self.logger.info("HDR image saved to %s", save_path)
 
 
 def main():
+    logging.basicConfig(level=logging.INFO)
     dpg.create_context()
     gui = HDRGui()
     with dpg.file_dialog(directory_selector=False, show=False, callback=gui._files_selected_single, id="file_dialog_single", multiselect=True):

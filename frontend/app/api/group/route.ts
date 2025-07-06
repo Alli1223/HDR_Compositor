@@ -13,6 +13,7 @@ export async function POST(req: Request) {
   if (!files.length) {
     return new NextResponse('No files uploaded', { status: 400 });
   }
+  console.log(`Received ${files.length} files for grouping`);
   const dir = await fs.mkdtemp(join(tmpdir(), 'hdr-group-'));
   const paths: string[] = [];
   for (const file of files) {
@@ -24,7 +25,9 @@ export async function POST(req: Request) {
   try {
     const script = join(process.cwd(), '..', 'group_uploads.py');
     const { stdout } = await execFileAsync('python3', [script, ...paths]);
-    return NextResponse.json(JSON.parse(stdout));
+    const groups = JSON.parse(stdout);
+    console.log(`Found ${groups.length} groups`);
+    return NextResponse.json(groups);
   } catch (err: any) {
     return new NextResponse('Error grouping images: ' + err, { status: 500 });
   }

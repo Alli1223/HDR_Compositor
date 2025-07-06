@@ -4,6 +4,7 @@ import sys
 import cv2
 import numpy as np
 from datetime import datetime, timedelta
+import logging
 try:  # support running as a script or a package module
     from .hdr_utils import (
         get_medium_exposure_image,
@@ -78,6 +79,8 @@ def group_images_by_similarity(
     percent of the hash length.
     """
 
+    logger = logging.getLogger(__name__)
+    logger.info("Grouping %d images by similarity", len(image_paths))
     sorted_paths = sorted(
         image_paths,
         key=lambda p: extract_datetime(p) or datetime.min,
@@ -115,6 +118,10 @@ def group_images_by_similarity(
 
     if current_group:
         groups.append(current_group)
+
+    logger.info("Formed %d groups", len(groups))
+    for i, g in enumerate(groups, 1):
+        logger.info("Group %d: %s", i, g)
 
     return groups
 
