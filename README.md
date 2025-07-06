@@ -20,6 +20,12 @@ Run the GUI with:
 python hdr_gui.py
 ```
 
+You can also start it using the provided Makefile:
+
+```bash
+make gui
+```
+
 After selecting images, click **Create HDR** and then **Save Result** to write `hdr_result.jpg` next to the chosen files.
 Use the sliders to tweak saturation, contrast, gamma and brightness before saving.
 
