@@ -1,5 +1,28 @@
 export type Hash = string;
 
+export async function createThumbnail(file: File, maxSize = 256): Promise<string> {
+  const img = document.createElement('img');
+  const url = URL.createObjectURL(file);
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = url;
+  });
+  const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(img.width * scale));
+  canvas.height = Math.max(1, Math.round(img.height * scale));
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    URL.revokeObjectURL(url);
+    return url;
+  }
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+  URL.revokeObjectURL(url);
+  return dataUrl;
+}
+
 export async function computeHash(file: File): Promise<Hash> {
   const img = document.createElement('img');
   const url = URL.createObjectURL(file);

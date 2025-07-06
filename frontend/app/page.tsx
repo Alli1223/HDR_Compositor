@@ -1,7 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Hash } from "./lib/imageHash";
-import { computeHash, hamming } from "./lib/imageHash";
+import { computeHash, hamming, createThumbnail } from "./lib/imageHash";
 import Button from "@mui/material/Button";
 import Slider from "@mui/material/Slider";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -19,16 +19,18 @@ type Group = {
   files: File[];
   resultUrl?: string;
   settings: Settings;
+  status?: "idle" | "queued" | "processing" | "done" | "error";
 };
 
 export default function Home() {
   const [loading, setLoading] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
   const [dragging, setDragging] = useState(false);
+  const [queue, setQueue] = useState<number[]>([]);
+  const processingRef = useRef(false);
 
   const resetURLs = (gs: Group[]) => {
     gs.forEach((g) => {
-      g.urls.forEach((u) => URL.revokeObjectURL(u));
       if (g.resultUrl) URL.revokeObjectURL(g.resultUrl);
     });
   };
@@ -41,7 +43,7 @@ export default function Home() {
     }
     const newGroups: Group[] = [];
     for (const file of Array.from(files)) {
-      const url = URL.createObjectURL(file);
+      const url = await createThumbnail(file);
       const hash = await computeHash(file);
       let group = newGroups.find((g) => hamming(g.hash, hash) <= 10);
       if (!group) {
@@ -50,6 +52,7 @@ export default function Home() {
           urls: [],
           files: [],
           settings: { autoAlign: false, antiGhost: false, contrast: 1, saturation: 1 },
+          status: "idle",
         };
         newGroups.push(group);
       }
@@ -73,38 +76,19 @@ export default function Home() {
     }
   };
 
-  const handleCreateHDR = async (index: number) => {
-    const group = groups[index];
-    if (!group || group.files.length === 0) return;
-    const { autoAlign, antiGhost, contrast, saturation } = group.settings;
-    const formData = new FormData();
-    group.files.forEach((f) => formData.append("images", f));
-    formData.append("autoAlign", autoAlign ? "1" : "0");
-    formData.append("antiGhost", antiGhost ? "1" : "0");
-    formData.append("contrast", (2 - contrast).toString());
-    formData.append("saturation", (2 - saturation).toString());
-    setLoading(true);
-    const res = await fetch("/api/process", { method: "POST", body: formData });
-    setLoading(false);
-    if (res.ok) {
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      setGroups((gs) => {
-        const copy = [...gs];
-        const prev = copy[index].resultUrl;
-        if (prev) URL.revokeObjectURL(prev);
-        copy[index] = { ...copy[index], resultUrl: url };
-        return copy;
-      });
-    } else {
-      alert(await res.text());
-    }
+  const enqueueHDR = (index: number) => {
+    setGroups((gs) => {
+      const copy = [...gs];
+      if (copy[index].status === "idle" || copy[index].status === "error") {
+        copy[index].status = "queued";
+        setQueue((q) => [...q, index]);
+      }
+      return copy;
+    });
   };
 
   const handleCreateAll = async () => {
-    for (let i = 0; i < groups.length; i++) {
-      await handleCreateHDR(i);
-    }
+    groups.forEach((_, i) => enqueueHDR(i));
   };
 
   const triggerDownload = (url: string, name: string) => {
@@ -129,6 +113,58 @@ export default function Home() {
       resetURLs(groups);
     };
   }, [groups]);
+
+  useEffect(() => {
+    if (processingRef.current || queue.length === 0) return;
+    const index = queue[0];
+    processingRef.current = true;
+    setGroups((gs) => {
+      const copy = [...gs];
+      copy[index].status = "processing";
+      return copy;
+    });
+    const run = async () => {
+      const g = groups[index];
+      const { autoAlign, antiGhost, contrast, saturation } = g.settings;
+      const formData = new FormData();
+      g.files.forEach((f) => formData.append("images", f));
+      formData.append("autoAlign", autoAlign ? "1" : "0");
+      formData.append("antiGhost", antiGhost ? "1" : "0");
+      formData.append("contrast", (2 - contrast).toString());
+      formData.append("saturation", (2 - saturation).toString());
+      setLoading(true);
+      try {
+        const res = await fetch("/api/process", { method: "POST", body: formData });
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          setGroups((gs) => {
+            const copy = [...gs];
+            const prev = copy[index].resultUrl;
+            if (prev) URL.revokeObjectURL(prev);
+            copy[index] = { ...copy[index], resultUrl: url, status: "done" };
+            return copy;
+          });
+        } else {
+          setGroups((gs) => {
+            const copy = [...gs];
+            copy[index].status = "error";
+            return copy;
+          });
+        }
+      } catch (e) {
+        setGroups((gs) => {
+          const copy = [...gs];
+          copy[index].status = "error";
+          return copy;
+        });
+      }
+      setLoading(false);
+      setQueue((q) => q.slice(1));
+      processingRef.current = false;
+    };
+    run();
+  }, [queue, groups]);
 
   const renderSettings = (index: number) => {
     const g = groups[index];
@@ -235,6 +271,17 @@ export default function Home() {
         />
       </div>
 
+      {queue.length > 0 && (
+        <div className="w-full max-w-xl border rounded-lg p-2">
+          <p className="text-sm font-semibold mb-1">Processing Queue:</p>
+          <ul className="list-disc list-inside text-sm">
+            {queue.map((idx, i) => (
+              <li key={i}>Group {idx + 1}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {groups.length === 1 && (
         <div className="w-full max-w-xl">
           <div className="flex gap-4">
@@ -245,9 +292,12 @@ export default function Home() {
                 ))}
               </div>
               {renderSettings(0)}
-              <Button variant="contained" onClick={() => handleCreateHDR(0)}>
+              <Button variant="contained" onClick={() => enqueueHDR(0)}>
                 Create HDR
               </Button>
+              {groups[0].status && groups[0].status !== "idle" && (
+                <p className="text-sm mt-1">Status: {groups[0].status}</p>
+              )}
             </div>
             {groups[0].resultUrl && (
               <div className="flex flex-col items-center gap-2">
@@ -289,9 +339,12 @@ export default function Home() {
                     </summary>
                     {renderSettings(idx)}
                   </details>
-                  <Button variant="contained" size="small" onClick={() => handleCreateHDR(idx)}>
+                  <Button variant="contained" size="small" onClick={() => enqueueHDR(idx)}>
                     Create HDR
                   </Button>
+                  {g.status && g.status !== "idle" && (
+                    <p className="text-xs mt-1">Status: {g.status}</p>
+                  )}
                 </div>
                 {g.resultUrl && (
                   <div className="flex flex-col items-center gap-2">
