@@ -26,6 +26,7 @@ type Group = {
   resultUrl?: string;
   settings: Settings;
   status?: "idle" | "queued" | "processing" | "done" | "error";
+  progress?: number;
 };
 
 export default function Home() {
@@ -65,6 +66,7 @@ export default function Home() {
           files: [],
           settings: { autoAlign: false, antiGhost: false, contrast: 1, saturation: 1 },
           status: "idle",
+          progress: 0,
         };
         newGroups.push(group);
       }
@@ -95,6 +97,7 @@ export default function Home() {
       const copy = [...gs];
       if (copy[index].status === "idle" || copy[index].status === "error") {
         copy[index].status = "queued";
+        copy[index].progress = 0;
         setQueue((q) => [...q, index]);
       }
       return copy;
@@ -151,14 +154,55 @@ export default function Home() {
       setLoading(true);
       try {
         const res = await fetch("/api/process", { method: "POST", body: formData });
-        if (res.ok) {
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
+        if (!res.ok || !res.body) throw new Error("request failed");
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let done = false;
+        let resultUrl: string | null = null;
+        let currentEvent = "";
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+          let eolIndex;
+          while ((eolIndex = buffer.indexOf("\n")) >= 0) {
+            const line = buffer.slice(0, eolIndex).trimEnd();
+            buffer = buffer.slice(eolIndex + 1);
+            if (line === "") {
+              // ignore empty separator
+              continue;
+            }
+            const [field, ...rest] = line.split(":");
+            const valueStr = rest.join(":").trim();
+            if (field === "event") {
+              currentEvent = valueStr;
+            } else if (field === "data") {
+              if (currentEvent === "progress") {
+                const pct = parseInt(valueStr, 10);
+                setGroups((gs) => {
+                  const copy = [...gs];
+                  copy[index].progress = pct;
+                  return copy;
+                });
+              } else if (currentEvent === "done") {
+                const byteString = atob(valueStr);
+                const bytes = new Uint8Array(byteString.length);
+                for (let i = 0; i < byteString.length; i++) {
+                  bytes[i] = byteString.charCodeAt(i);
+                }
+                const blob = new Blob([bytes], { type: "image/jpeg" });
+                resultUrl = URL.createObjectURL(blob);
+              }
+            }
+          }
+        }
+        if (resultUrl) {
           setGroups((gs) => {
             const copy = [...gs];
             const prev = copy[index].resultUrl;
             if (prev) URL.revokeObjectURL(prev);
-            copy[index] = { ...copy[index], resultUrl: url, status: "done" };
+            copy[index] = { ...copy[index], resultUrl, status: "done", progress: 100 };
             return copy;
           });
         } else {
@@ -306,7 +350,11 @@ export default function Home() {
                   secondary={groups[idx].status}
                 />
                 {i === 0 && groups[idx].status === "processing" && (
-                  <LinearProgress sx={{ mt: 1 }} />
+                  <LinearProgress
+                    sx={{ mt: 1 }}
+                    variant="determinate"
+                    value={groups[idx].progress ?? 0}
+                  />
                 )}
               </ListItem>
             ))}
@@ -331,7 +379,11 @@ export default function Home() {
                 <>
                   <p className="text-sm mt-1">Status: {groups[0].status}</p>
                   {groups[0].status === "processing" && (
-                    <LinearProgress sx={{ mt: 1 }} />
+                    <LinearProgress
+                      sx={{ mt: 1 }}
+                      variant="determinate"
+                      value={groups[0].progress ?? 0}
+                    />
                   )}
                 </>
               )}
@@ -383,7 +435,11 @@ export default function Home() {
                     <>
                       <p className="text-xs mt-1">Status: {g.status}</p>
                       {g.status === "processing" && (
-                        <LinearProgress sx={{ mt: 1 }} />
+                        <LinearProgress
+                          sx={{ mt: 1 }}
+                          variant="determinate"
+                          value={g.progress ?? 0}
+                        />
                       )}
                     </>
                   )}
