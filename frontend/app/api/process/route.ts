@@ -2,10 +2,8 @@ import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
-
-const execFileAsync = promisify(execFile);
+import { spawn } from 'child_process';
+import { TextEncoder } from 'util';
 
 export async function POST(req: Request) {
   const formData = await req.formData();
@@ -26,23 +24,60 @@ export async function POST(req: Request) {
     paths.push(filePath);
   }
   const outputPath = join(dir, 'result.jpg');
+  const script = join(process.cwd(), '..', 'process_uploads.py');
+  const args: string[] = [];
+  if (autoAlign) args.push('--align');
+  if (antiGhost) args.push('--deghost');
+  if (contrast) args.push('--contrast', String(contrast));
+  if (saturation) args.push('--saturation', String(saturation));
+
+  const { readable, writable } = new TransformStream();
+  const writer = writable.getWriter();
+  const enc = new TextEncoder();
+
+  const send = (event: string, data: string) => {
+    writer.write(enc.encode(`event: ${event}\ndata: ${data}\n\n`));
+  };
+
   try {
-    const script = join(process.cwd(), '..', 'process_uploads.py');
-    const args: string[] = [];
-    if (autoAlign) args.push('--align');
-    if (antiGhost) args.push('--deghost');
-    if (contrast) args.push('--contrast', String(contrast));
-    if (saturation) args.push('--saturation', String(saturation));
-    await execFileAsync('python3', [script, ...args, ...paths, outputPath]);
-    const data = await fs.readFile(outputPath);
-    return new NextResponse(data, {
-      status: 200,
-      headers: {
-        'Content-Type': 'image/jpeg',
-        'Content-Disposition': 'attachment; filename="result.jpg"'
+    const child = spawn('python3', [script, ...args, ...paths, outputPath]);
+    let finalPath = '';
+
+    child.stdout.setEncoding('utf8');
+    child.stdout.on('data', (chunk: string) => {
+      chunk.split(/\r?\n/).forEach((line) => {
+        if (!line) return;
+        if (line.startsWith('PROGRESS')) {
+          const pct = line.split(' ')[1];
+          send('progress', pct);
+        } else {
+          finalPath = line.trim();
+        }
+      });
+    });
+
+    child.stderr.on('data', (d) => {
+      send('error', d.toString());
+    });
+
+    child.on('close', async () => {
+      try {
+        const data = await fs.readFile(finalPath || outputPath);
+        send('done', data.toString('base64'));
+      } finally {
+        writer.close();
       }
     });
   } catch (err: any) {
-    return new NextResponse('Error processing images: ' + err, { status: 500 });
+    send('error', String(err));
+    writer.close();
   }
+
+  return new NextResponse(readable, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive'
+    }
+  });
 }

@@ -38,8 +38,15 @@ def main():
     if not aeb_images:
         print("No AEB-tagged images found", file=sys.stderr)
         sys.exit(1)
+
+    def progress(pct: int):
+        print(f"PROGRESS {pct}", flush=True)
+
+    progress(10)
     images = load_images(aeb_images)
+    progress(40)
     hdr = create_hdr(images, exposure_times, align=args.align, deghost=args.deghost)
+    progress(70)
     ref_image = get_medium_exposure_image(images, exposure_times)
     ldr = tonemap_mantiuk(
         hdr,
@@ -49,7 +56,9 @@ def main():
         gamma=args.gamma,
         brightness=args.brightness,
     )
+    progress(90)
     cv2.imwrite(output_path, ldr)
+    progress(100)
     print(output_path)
 
 if __name__ == "__main__":
