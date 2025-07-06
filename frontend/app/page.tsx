@@ -107,6 +107,23 @@ export default function Home() {
     }
   };
 
+  const triggerDownload = (url: string, name: string) => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+  };
+
+  const handleDownloadAll = () => {
+    groups.forEach((g, idx) => {
+      if (g.resultUrl) {
+        const name = groups.length === 1 ?
+          "hdr_result.jpg" : `hdr_group_${idx + 1}.jpg`;
+        triggerDownload(g.resultUrl, name);
+      }
+    });
+  };
+
   useEffect(() => {
     return () => {
       resetURLs(groups);
@@ -220,24 +237,37 @@ export default function Home() {
 
       {groups.length === 1 && (
         <div className="w-full max-w-xl">
-          <div className="grid grid-cols-3 gap-2 mb-2">
-            {groups[0].urls.map((src) => (
-              <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
-            ))}
-          </div>
-          {renderSettings(0)}
-          <div className="flex items-center gap-2">
-            <Button variant="contained" onClick={() => handleCreateHDR(0)}>
-              Create HDR
-            </Button>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                {groups[0].urls.map((src) => (
+                  <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
+                ))}
+              </div>
+              {renderSettings(0)}
+              <Button variant="contained" onClick={() => handleCreateHDR(0)}>
+                Create HDR
+              </Button>
+            </div>
             {groups[0].resultUrl && (
-              <a href={groups[0].resultUrl} download="hdr_result.jpg">
-                <Button variant="outlined" size="small">
-                  Download
-                </Button>
-              </a>
+              <div className="flex flex-col items-center gap-2">
+                <img
+                  src={groups[0].resultUrl}
+                  className="w-32 h-32 object-cover rounded-lg"
+                />
+                <a href={groups[0].resultUrl} download="hdr_result.jpg">
+                  <Button variant="outlined" size="small">Download</Button>
+                </a>
+              </div>
             )}
           </div>
+          {groups[0].resultUrl && (
+            <div className="flex justify-end mt-2">
+              <Button variant="outlined" onClick={handleDownloadAll}>
+                Download All
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -246,37 +276,46 @@ export default function Home() {
           {groups.map((g, idx) => (
             <div key={idx} className="border rounded-lg p-4 mb-4">
               <h3 className="text-sm font-semibold mb-2">Group {idx + 1}</h3>
-              <div className="grid grid-cols-3 gap-2 mb-2">
-                {g.urls.map((src) => (
-                  <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
-                ))}
-              </div>
-              <details className="mb-2">
-                <summary>
-                  <Button variant="outlined" size="small">
-                    Settings
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    {g.urls.map((src) => (
+                      <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
+                    ))}
+                  </div>
+                  <details className="mb-2">
+                    <summary>
+                      <Button variant="outlined" size="small">Settings</Button>
+                    </summary>
+                    {renderSettings(idx)}
+                  </details>
+                  <Button variant="contained" size="small" onClick={() => handleCreateHDR(idx)}>
+                    Create HDR
                   </Button>
-                </summary>
-                {renderSettings(idx)}
-              </details>
-              <div className="flex items-center gap-2">
-                <Button variant="contained" size="small" onClick={() => handleCreateHDR(idx)}>
-                  Create HDR
-                </Button>
+                </div>
                 {g.resultUrl && (
-                  <a href={g.resultUrl} download={`hdr_group_${idx + 1}.jpg`}>
-                    <Button size="small" variant="outlined">
-                      Download
-                    </Button>
-                  </a>
+                  <div className="flex flex-col items-center gap-2">
+                    <img
+                      src={g.resultUrl}
+                      className="w-32 h-32 object-cover rounded-lg"
+                    />
+                    <a href={g.resultUrl} download={`hdr_group_${idx + 1}.jpg`}>
+                      <Button size="small" variant="outlined">Download</Button>
+                    </a>
+                  </div>
                 )}
               </div>
             </div>
           ))}
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
             <Button variant="contained" onClick={handleCreateAll}>
               Create All
             </Button>
+            {groups.some((g) => g.resultUrl) && (
+              <Button variant="outlined" onClick={handleDownloadAll}>
+                Download All
+              </Button>
+            )}
           </div>
         </div>
       )}
