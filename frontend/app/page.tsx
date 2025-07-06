@@ -389,15 +389,16 @@ export default function Home() {
               )}
             </div>
             {groups[0].resultUrl && (
-              <div className="flex flex-col items-center gap-2">
+              <Paper className="flex flex-col items-center gap-2 p-2" elevation={2}>
+                <Typography variant="subtitle2">HDR Result</Typography>
                 <img
                   src={groups[0].resultUrl}
-                  className="w-32 h-32 object-cover rounded-lg"
+                  className="w-48 h-48 object-cover rounded-lg"
                 />
                 <a href={groups[0].resultUrl} download="hdr_result.jpg">
                   <Button variant="outlined" size="small">Download</Button>
                 </a>
-              </div>
+              </Paper>
             )}
           </div>
           {groups[0].resultUrl && (
@@ -445,15 +446,16 @@ export default function Home() {
                   )}
                 </div>
                 {g.resultUrl && (
-                  <div className="flex flex-col items-center gap-2">
+                  <Paper className="flex flex-col items-center gap-2 p-2" elevation={2}>
+                    <Typography variant="subtitle2">HDR Result</Typography>
                     <img
                       src={g.resultUrl}
-                      className="w-32 h-32 object-cover rounded-lg"
+                      className="w-48 h-48 object-cover rounded-lg"
                     />
                     <a href={g.resultUrl} download={`hdr_group_${idx + 1}.jpg`}>
                       <Button size="small" variant="outlined">Download</Button>
                     </a>
-                  </div>
+                  </Paper>
                 )}
               </div>
             </div>
