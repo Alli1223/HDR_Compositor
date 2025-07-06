@@ -24,7 +24,7 @@ After selecting images, click **Create HDR** and then **Save Result** to write `
 
 ## Web Interface
 
-A minimal Next.js frontend is available in the `frontend` directory. It lets you select images in your browser and downloads the processed HDR image.
+A minimal Next.js frontend is available in the `frontend` directory. It lets you import images in your browser, shows them grouped by similarity and downloads the processed HDR image.
 
 ```bash
 cd frontend
@@ -32,7 +32,7 @@ npm install  # first time only
 npm run dev
 ```
 
-Open `http://localhost:3000` in your browser, select your AEB images and click **Create HDR**.
+Open `http://localhost:3000` in your browser, import your AEB images using the **Import Images** button and click **Create HDR**. Imported files are hashed client-side so similar photos are grouped together.
 
 ### Docker
 

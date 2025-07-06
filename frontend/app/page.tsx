@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
+import type { Hash } from "./lib/imageHash";
+import { computeHash, hamming } from "./lib/imageHash";
 import Button from "@mui/material/Button";
 import Slider from "@mui/material/Slider";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -8,20 +10,31 @@ export default function Home() {
   const [files, setFiles] = useState<FileList | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [groups, setGroups] = useState<{ hash: Hash; urls: string[] }[]>([]);
   const [autoAlign, setAutoAlign] = useState(false);
   const [antiGhost, setAntiGhost] = useState(false);
   const [contrast, setContrast] = useState(1.0);
   const [saturation, setSaturation] = useState(1.0);
 
-  const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files;
     setFiles(f);
-    previews.forEach((u) => URL.revokeObjectURL(u));
+    groups.forEach((g) => g.urls.forEach((u) => URL.revokeObjectURL(u)));
     if (f) {
-      setPreviews(Array.from(f).map((file) => URL.createObjectURL(file)));
+      const newGroups: { hash: Hash; urls: string[] }[] = [];
+      for (const file of Array.from(f)) {
+        const url = URL.createObjectURL(file);
+        const hash = await computeHash(file);
+        let group = newGroups.find((g) => hamming(g.hash, hash) <= 10);
+        if (!group) {
+          group = { hash, urls: [] };
+          newGroups.push(group);
+        }
+        group.urls.push(url);
+      }
+      setGroups(newGroups);
     } else {
-      setPreviews([]);
+      setGroups([]);
     }
   };
 
@@ -48,14 +61,14 @@ export default function Home() {
 
   useEffect(() => {
     return () => {
-      previews.forEach((u) => URL.revokeObjectURL(u));
+      groups.forEach((g) => g.urls.forEach((u) => URL.revokeObjectURL(u)));
     };
-  }, [previews]);
+  }, [groups]);
 
   return (
     <main className="flex p-4 gap-4">
       <form onSubmit={handleSubmit} className="flex w-full gap-4">
-        {/* Left column: file input and previews */}
+        {/* Left column: file input and grouped previews */}
         <div className="flex flex-col items-start gap-4 w-1/3">
           <input
             id="file-input"
@@ -67,16 +80,25 @@ export default function Home() {
           />
           <label htmlFor="file-input">
             <Button variant="contained" component="span">
-              Select Images
+              Import Images
             </Button>
           </label>
-          {previews.length > 0 && (
-            <div className="border rounded-lg p-2">
-              <div className="grid grid-cols-2 gap-2">
-                {previews.map((src) => (
-                  <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
-                ))}
-              </div>
+          {groups.length > 0 && (
+            <div className="border rounded-lg p-2 w-full">
+              {groups.map((g, idx) => (
+                <div key={idx} className="mb-2">
+                  <h3 className="text-sm font-semibold mb-1">Group {idx + 1}</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {g.urls.map((src) => (
+                      <img
+                        key={src}
+                        src={src}
+                        className="w-24 h-24 object-cover rounded-lg"
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
