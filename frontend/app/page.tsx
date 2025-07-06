@@ -1,61 +1,97 @@
 "use client";
 import { useState, useEffect } from "react";
+import type { Hash } from "./lib/imageHash";
+import { computeHash, hamming } from "./lib/imageHash";
 import Button from "@mui/material/Button";
 import Slider from "@mui/material/Slider";
 import CircularProgress from "@mui/material/CircularProgress";
 
+type Group = {
+  hash: Hash;
+  urls: string[];
+  files: File[];
+  resultUrl?: string;
+};
+
 export default function Home() {
-  const [files, setFiles] = useState<FileList | null>(null);
-  const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [autoAlign, setAutoAlign] = useState(false);
   const [antiGhost, setAntiGhost] = useState(false);
   const [contrast, setContrast] = useState(1.0);
   const [saturation, setSaturation] = useState(1.0);
 
-  const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files;
-    setFiles(f);
-    previews.forEach((u) => URL.revokeObjectURL(u));
+    groups.forEach((g) => {
+      g.urls.forEach((u) => URL.revokeObjectURL(u));
+      if (g.resultUrl) URL.revokeObjectURL(g.resultUrl);
+    });
     if (f) {
-      setPreviews(Array.from(f).map((file) => URL.createObjectURL(file)));
+      const newGroups: Group[] = [];
+      for (const file of Array.from(f)) {
+        const url = URL.createObjectURL(file);
+        const hash = await computeHash(file);
+        let group = newGroups.find((g) => hamming(g.hash, hash) <= 10);
+        if (!group) {
+          group = { hash, urls: [], files: [] };
+          newGroups.push(group);
+        }
+        group.urls.push(url);
+        group.files.push(file);
+      }
+      setGroups(newGroups);
     } else {
-      setPreviews([]);
+      setGroups([]);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!files || files.length === 0) return;
+  const handleCreateHDR = async (index: number) => {
+    const group = groups[index];
+    if (!group || group.files.length === 0) return;
     const formData = new FormData();
-    Array.from(files).forEach((f) => formData.append("images", f));
-      formData.append("autoAlign", autoAlign ? "1" : "0");
-      formData.append("antiGhost", antiGhost ? "1" : "0");
-      formData.append("contrast", (2 - contrast).toString());
-      formData.append("saturation", (2 - saturation).toString());
+    group.files.forEach((f) => formData.append("images", f));
+    formData.append("autoAlign", autoAlign ? "1" : "0");
+    formData.append("antiGhost", antiGhost ? "1" : "0");
+    formData.append("contrast", (2 - contrast).toString());
+    formData.append("saturation", (2 - saturation).toString());
     setLoading(true);
-    setResultUrl(null);
     const res = await fetch("/api/process", { method: "POST", body: formData });
     setLoading(false);
     if (res.ok) {
       const blob = await res.blob();
-      setResultUrl(URL.createObjectURL(blob));
+      const url = URL.createObjectURL(blob);
+      setGroups((gs) => {
+        const copy = [...gs];
+        const prev = copy[index].resultUrl;
+        if (prev) URL.revokeObjectURL(prev);
+        copy[index] = { ...copy[index], resultUrl: url };
+        return copy;
+      });
     } else {
       alert(await res.text());
     }
   };
 
+  const handleCreateAll = async () => {
+    for (let i = 0; i < groups.length; i++) {
+      await handleCreateHDR(i);
+    }
+  };
+
   useEffect(() => {
     return () => {
-      previews.forEach((u) => URL.revokeObjectURL(u));
+      groups.forEach((g) => {
+        g.urls.forEach((u) => URL.revokeObjectURL(u));
+        if (g.resultUrl) URL.revokeObjectURL(g.resultUrl);
+      });
     };
-  }, [previews]);
+  }, [groups]);
 
   return (
     <main className="flex p-4 gap-4">
-      <form onSubmit={handleSubmit} className="flex w-full gap-4">
-        {/* Left column: file input and previews */}
+      <div className="flex w-full gap-4">
+        {/* Left column: file input and grouped previews */}
         <div className="flex flex-col items-start gap-4 w-1/3">
           <input
             id="file-input"
@@ -67,16 +103,40 @@ export default function Home() {
           />
           <label htmlFor="file-input">
             <Button variant="contained" component="span">
-              Select Images
+              Import Images
             </Button>
           </label>
-          {previews.length > 0 && (
-            <div className="border rounded-lg p-2">
-              <div className="grid grid-cols-2 gap-2">
-                {previews.map((src) => (
-                  <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
-                ))}
+          {groups.length > 0 && (
+            <div className="border rounded-lg p-2 w-full">
+              <div className="flex justify-end mb-2">
+                <Button size="small" variant="contained" onClick={handleCreateAll}>
+                  Create All
+                </Button>
               </div>
+              {groups.map((g, idx) => (
+                <div key={idx} className="mb-4">
+                  <h3 className="text-sm font-semibold mb-1">Group {idx + 1}</h3>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    {g.urls.map((src) => (
+                      <img
+                        key={src}
+                        src={src}
+                        className="w-24 h-24 object-cover rounded-lg"
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Button size="small" variant="contained" onClick={() => handleCreateHDR(idx)}>
+                      Create HDR
+                    </Button>
+                    {g.resultUrl && (
+                      <a href={g.resultUrl} download={`hdr_group_${idx + 1}.jpg`}>
+                        <Button size="small" variant="outlined">Download</Button>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -138,24 +198,13 @@ export default function Home() {
               </li>
             </ol>
           </div>
-          {resultUrl && (
-            <div className="mt-4 flex flex-col items-center gap-2">
-              <img src={resultUrl} className="w-96 rounded" />
-              <a href={resultUrl} download="hdr_result.jpg">
-                <Button variant="outlined">Download Result</Button>
-              </a>
-            </div>
-          )}
         </div>
 
-        {/* Right column: create button */}
+        {/* Right column: loader */}
         <div className="flex flex-col items-start gap-4 w-1/3">
-          <Button type="submit" variant="contained">
-            Create HDR
-          </Button>
           {loading && <CircularProgress />}
         </div>
-      </form>
+      </div>
     </main>
   );
 }
