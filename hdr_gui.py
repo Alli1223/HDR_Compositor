@@ -1,8 +1,8 @@
 import os
 import cv2
 import numpy as np
-from datetime import timedelta
 import dearpygui.dearpygui as dpg
+from datetime import timedelta
 
 try:  # support running as part of a package or as a script
     from .find_and_merge_aeb import (
@@ -30,17 +30,29 @@ class HDRGui:
         self.ldr_image = None
 
         with dpg.window(label="HDR Compositor", width=800, height=600):
-            dpg.add_button(label="Select Images", callback=self.select_files)
+            dpg.add_button(label="Select Images for One HDR", callback=self.select_files_single)
+            dpg.add_button(label="Batch HDR Detect", callback=self.select_files_batch)
             self.listbox = dpg.add_listbox(items=[], num_items=5, width=780)
             dpg.add_button(label="Create HDR", callback=self.create_hdr_image)
             self.save_btn = dpg.add_button(label="Save Result", callback=self.save_image, enabled=False)
             with dpg.group() as self.image_group:
                 dpg.add_text("HDR preview will appear here")
 
-    def select_files(self):
-        dpg.show_item("file_dialog")
+    def select_files_single(self):
+        dpg.show_item("file_dialog_single")
 
-    def _file_selected(self, sender, app_data):
+    def select_files_batch(self):
+        dpg.show_item("file_dialog_batch")
+
+    def _files_selected_single(self, sender, app_data):
+        self.file_paths = list(app_data["selections"].values())
+        self.groups = []
+        dpg.configure_item(self.listbox, items=self.file_paths)
+        dpg.configure_item(self.save_btn, enabled=False)
+        dpg.delete_item(self.image_group, children_only=True)
+        dpg.add_text("HDR preview will appear here", parent=self.image_group)
+
+    def _files_selected_batch(self, sender, app_data):
         self.file_paths = list(app_data["selections"].values())
         self.groups = group_images_by_datetime(self.file_paths, threshold=timedelta(seconds=0.5))
         self.group_labels = [f"Group {i+1} ({len(g)} images)" for i, g in enumerate(self.groups)]
@@ -50,22 +62,23 @@ class HDRGui:
         dpg.add_text("HDR preview will appear here", parent=self.image_group)
 
     def create_hdr_image(self):
-        if not self.groups:
-            dpg.show_logger()
-            dpg.log_warning("No valid image groups found.")
-            return
-        selected_label = dpg.get_value(self.listbox)
-        if not selected_label:
-            dpg.show_logger()
-            dpg.log_warning("Select a group to process.")
-            return
-        index = self.group_labels.index(selected_label)
-        group_paths = self.groups[index]
-        image_paths, exposure_times = get_exposure_times_from_list(group_paths)
+        if self.groups:
+            selected_label = dpg.get_value(self.listbox)
+            if not selected_label:
+                dpg.show_logger()
+                dpg.log_warning("Select a group to process.")
+                return
+            index = self.group_labels.index(selected_label)
+            image_paths = self.groups[index]
+        else:
+            image_paths = self.file_paths
+
+        image_paths, exposure_times = get_exposure_times_from_list(image_paths)
         if len(image_paths) < 3:
             dpg.show_logger()
-            dpg.log_warning("Selected group does not contain at least three usable images.")
+            dpg.log_warning("Selected images do not contain at least three usable exposures.")
             return
+
         images = load_images(image_paths)
         self.hdr_image = create_hdr(images, exposure_times)
         ref_image = get_medium_exposure_image(images, exposure_times)
@@ -101,7 +114,13 @@ class HDRGui:
 def main():
     dpg.create_context()
     gui = HDRGui()
-    with dpg.file_dialog(directory_selector=False, show=False, callback=gui._file_selected, id="file_dialog", multiselect=True):
+    with dpg.file_dialog(directory_selector=False, show=False, callback=gui._files_selected_single, id="file_dialog_single", multiselect=True):
+        dpg.add_file_extension(".jpg", color=(255, 255, 255, 255))
+        dpg.add_file_extension(".jpeg", color=(255, 255, 255, 255))
+        dpg.add_file_extension(".png", color=(255, 255, 255, 255))
+        dpg.add_file_extension(".tif", color=(255, 255, 255, 255))
+        dpg.add_file_extension(".tiff", color=(255, 255, 255, 255))
+    with dpg.file_dialog(directory_selector=False, show=False, callback=gui._files_selected_batch, id="file_dialog_batch", multiselect=True):
         dpg.add_file_extension(".jpg", color=(255, 255, 255, 255))
         dpg.add_file_extension(".jpeg", color=(255, 255, 255, 255))
         dpg.add_file_extension(".png", color=(255, 255, 255, 255))
