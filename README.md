@@ -32,7 +32,7 @@ npm install  # first time only
 npm run dev
 ```
 
-Open `http://localhost:3000` in your browser, import your AEB images using the **Import Images** button and click **Create HDR**. Imported files are hashed client-side so similar photos are grouped together.
+Open `http://localhost:3000` in your browser and use the **Import Images** button to select your AEB files. Imported files are hashed client-side so similar photos are grouped together. Each group shows a **Create HDR** button that merges only the images from that set.
 
 ### Docker
 

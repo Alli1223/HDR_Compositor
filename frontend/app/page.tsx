@@ -7,10 +7,13 @@ import Slider from "@mui/material/Slider";
 import CircularProgress from "@mui/material/CircularProgress";
 
 export default function Home() {
-  const [files, setFiles] = useState<FileList | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [groups, setGroups] = useState<{ hash: Hash; urls: string[] }[]>([]);
+  const [groups, setGroups] = useState<{
+    hash: Hash;
+    urls: string[];
+    files: File[];
+  }[]>([]);
   const [autoAlign, setAutoAlign] = useState(false);
   const [antiGhost, setAntiGhost] = useState(false);
   const [contrast, setContrast] = useState(1.0);
@@ -18,19 +21,19 @@ export default function Home() {
 
   const handleFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files;
-    setFiles(f);
     groups.forEach((g) => g.urls.forEach((u) => URL.revokeObjectURL(u)));
     if (f) {
-      const newGroups: { hash: Hash; urls: string[] }[] = [];
+      const newGroups: { hash: Hash; urls: string[]; files: File[] }[] = [];
       for (const file of Array.from(f)) {
         const url = URL.createObjectURL(file);
         const hash = await computeHash(file);
         let group = newGroups.find((g) => hamming(g.hash, hash) <= 10);
         if (!group) {
-          group = { hash, urls: [] };
+          group = { hash, urls: [], files: [] };
           newGroups.push(group);
         }
         group.urls.push(url);
+        group.files.push(file);
       }
       setGroups(newGroups);
     } else {
@@ -38,15 +41,14 @@ export default function Home() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!files || files.length === 0) return;
+  const handleCreateHDR = async (group: { files: File[] }) => {
+    if (group.files.length === 0) return;
     const formData = new FormData();
-    Array.from(files).forEach((f) => formData.append("images", f));
-      formData.append("autoAlign", autoAlign ? "1" : "0");
-      formData.append("antiGhost", antiGhost ? "1" : "0");
-      formData.append("contrast", (2 - contrast).toString());
-      formData.append("saturation", (2 - saturation).toString());
+    group.files.forEach((f) => formData.append("images", f));
+    formData.append("autoAlign", autoAlign ? "1" : "0");
+    formData.append("antiGhost", antiGhost ? "1" : "0");
+    formData.append("contrast", (2 - contrast).toString());
+    formData.append("saturation", (2 - saturation).toString());
     setLoading(true);
     setResultUrl(null);
     const res = await fetch("/api/process", { method: "POST", body: formData });
@@ -67,7 +69,7 @@ export default function Home() {
 
   return (
     <main className="flex p-4 gap-4">
-      <form onSubmit={handleSubmit} className="flex w-full gap-4">
+      <div className="flex w-full gap-4">
         {/* Left column: file input and grouped previews */}
         <div className="flex flex-col items-start gap-4 w-1/3">
           <input
@@ -86,9 +88,9 @@ export default function Home() {
           {groups.length > 0 && (
             <div className="border rounded-lg p-2 w-full">
               {groups.map((g, idx) => (
-                <div key={idx} className="mb-2">
+                <div key={idx} className="mb-4">
                   <h3 className="text-sm font-semibold mb-1">Group {idx + 1}</h3>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 mb-2">
                     {g.urls.map((src) => (
                       <img
                         key={src}
@@ -97,6 +99,9 @@ export default function Home() {
                       />
                     ))}
                   </div>
+                  <Button size="small" variant="contained" onClick={() => handleCreateHDR(g)}>
+                    Create HDR
+                  </Button>
                 </div>
               ))}
             </div>
@@ -170,14 +175,11 @@ export default function Home() {
           )}
         </div>
 
-        {/* Right column: create button */}
+        {/* Right column: loader */}
         <div className="flex flex-col items-start gap-4 w-1/3">
-          <Button type="submit" variant="contained">
-            Create HDR
-          </Button>
           {loading && <CircularProgress />}
         </div>
-      </form>
+      </div>
     </main>
   );
 }
