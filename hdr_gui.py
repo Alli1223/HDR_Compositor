@@ -23,12 +23,17 @@ class HDRGui:
         self.file_paths = []
         self.hdr_image = None
         self.ldr_image = None
+        self.ref_image = None
 
         with dpg.window(label="HDR Compositor", width=800, height=600):
             dpg.add_button(label="Select Images", callback=self.select_files)
             self.listbox = dpg.add_listbox(items=[], num_items=5, width=780)
             dpg.add_button(label="Create HDR", callback=self.create_hdr_image)
             self.save_btn = dpg.add_button(label="Save Result", callback=self.save_image, enabled=False)
+            dpg.add_slider_float(label="Saturation", tag="sat_slider", default_value=1.0, min_value=0.0, max_value=2.0, callback=self.update_preview)
+            dpg.add_slider_float(label="Contrast", tag="contrast_slider", default_value=1.0, min_value=0.0, max_value=2.0, callback=self.update_preview)
+            dpg.add_slider_float(label="Gamma", tag="gamma_slider", default_value=1.0, min_value=0.1, max_value=2.5, callback=self.update_preview)
+            dpg.add_slider_float(label="Brightness", tag="brightness_slider", default_value=1.0, min_value=0.5, max_value=2.0, callback=self.update_preview)
             with dpg.group() as self.image_group:
                 dpg.add_text("HDR preview will appear here")
 
@@ -54,10 +59,26 @@ class HDRGui:
             return
         images = load_images(aeb_images)
         self.hdr_image = create_hdr(images, exposure_times)
-        ref_image = get_medium_exposure_image(images, exposure_times)
-        self.ldr_image = tonemap_mantiuk(self.hdr_image, ref_image)
-        self.display_image(self.ldr_image)
+        self.ref_image = get_medium_exposure_image(images, exposure_times)
+        self.update_preview()
         dpg.configure_item(self.save_btn, enabled=True)
+
+    def update_preview(self, *args, **kwargs):
+        if self.hdr_image is None:
+            return
+        sat = dpg.get_value("sat_slider")
+        con = dpg.get_value("contrast_slider")
+        gamma = dpg.get_value("gamma_slider")
+        bright = dpg.get_value("brightness_slider")
+        self.ldr_image = tonemap_mantiuk(
+            self.hdr_image,
+            self.ref_image,
+            saturation=sat,
+            contrast=con,
+            gamma=gamma,
+            brightness=bright,
+        )
+        self.display_image(self.ldr_image)
 
     def display_image(self, img):
         rgba = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)

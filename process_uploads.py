@@ -25,6 +25,8 @@ def main():
     parser.add_argument("--deghost", action="store_true", help="apply anti-ghosting")
     parser.add_argument("--contrast", type=float, default=1.0, help="tone mapping contrast scale")
     parser.add_argument("--saturation", type=float, default=1.0, help="tone mapping saturation")
+    parser.add_argument("--gamma", type=float, default=1.0, help="tone mapping gamma")
+    parser.add_argument("--brightness", type=float, default=1.0, help="output brightness scale")
     args = parser.parse_args()
 
     if len(args.paths) < 2:
@@ -44,6 +46,8 @@ def main():
         ref_image,
         saturation=args.saturation,
         contrast=args.contrast,
+        gamma=args.gamma,
+        brightness=args.brightness,
     )
     cv2.imwrite(output_path, ldr)
     print(output_path)

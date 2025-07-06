@@ -37,8 +37,15 @@ def tonemap_mantiuk(
     *,
     saturation: float = 1.0,
     contrast: float = 1.0,
+    gamma: float = 1.0,
+    brightness: float = 1.0,
 ) -> np.ndarray:
-    """Tonemap an HDR image using Mantiuk algorithm and enhance the result.
+    """Tonemap an HDR image using the Mantiuk algorithm.
+
+    Parameters allow adjusting the overall look of the result:
+    ``saturation`` and ``contrast`` are forwarded to OpenCV's Mantiuk
+    tonemapper. ``gamma`` controls global contrast and ``brightness`` scales
+    the tone mapped image before conversion to 8‑bit.
 
     OpenCV's tonemapping expects the input HDR values to be in the ``0..1``
     range. Real world radiance maps can easily exceed this, leading to
@@ -52,9 +59,11 @@ def tonemap_mantiuk(
     )
 
     tonemap = cv2.createTonemapMantiuk(
-        gamma=1.0, scale=contrast, saturation=saturation
+        gamma=gamma, scale=contrast, saturation=saturation
     )
     ldr = tonemap.process(hdr_norm.copy())
+    # Apply additional brightness adjustment before converting to 8 bit
+    ldr = np.clip(ldr * brightness, 0.0, 1.0)
     # Replace any NaN or infinity values before converting to 8 bit
     ldr = np.nan_to_num(ldr, nan=0.0, posinf=1.0, neginf=0.0)
     ldr_8bit = np.clip(ldr * 255, 0, 255).astype("uint8")
