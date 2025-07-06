@@ -25,17 +25,33 @@ class HDRGui:
         self.ldr_image = None
         self.ref_image = None
 
-        with dpg.window(label="AEB Compositor", width=800, height=600):
-            dpg.add_button(label="Select Images", callback=self.select_files)
-            self.listbox = dpg.add_listbox(items=[], num_items=5, width=780)
-            dpg.add_button(label="Create HDR", callback=self.create_hdr_image)
-            self.save_btn = dpg.add_button(label="Save Result", callback=self.save_image, enabled=False)
-            dpg.add_slider_float(label="Saturation", tag="sat_slider", default_value=1.0, min_value=0.0, max_value=2.0, callback=self.update_preview)
-            dpg.add_slider_float(label="Contrast", tag="contrast_slider", default_value=1.0, min_value=0.0, max_value=2.0, callback=self.update_preview)
-            dpg.add_slider_float(label="Gamma", tag="gamma_slider", default_value=1.0, min_value=0.1, max_value=2.5, callback=self.update_preview)
-            dpg.add_slider_float(label="Brightness", tag="brightness_slider", default_value=1.0, min_value=0.5, max_value=2.0, callback=self.update_preview)
-            with dpg.group() as self.image_group:
-                dpg.add_text("HDR preview will appear here")
+        with dpg.window(label="AEB Compositor", tag="main_window", width=820, height=620):
+            dpg.add_text("HDR Compositor", tag="title_text")
+            dpg.add_separator()
+            with dpg.group(horizontal=True):
+                with dpg.child_window(width=260, border=False):
+                    dpg.add_button(label="Select Images", callback=self.select_files)
+                    self.listbox = dpg.add_listbox(items=[], num_items=6, width=240)
+                    dpg.add_checkbox(label="Auto Align", tag="auto_align")
+                    dpg.add_checkbox(label="Deghost", tag="deghost")
+                    dpg.add_button(label="Create HDR", callback=self.create_hdr_image)
+                    self.save_btn = dpg.add_button(label="Save Result", callback=self.save_image, enabled=False)
+                    dpg.add_separator()
+                    dpg.add_text("Adjustments")
+                    dpg.add_slider_float(label="Saturation", tag="sat_slider", default_value=1.0, min_value=0.0, max_value=2.0, callback=self.update_preview)
+                    dpg.add_slider_float(label="Contrast", tag="contrast_slider", default_value=1.0, min_value=0.0, max_value=2.0, callback=self.update_preview)
+                    dpg.add_slider_float(label="Gamma", tag="gamma_slider", default_value=1.0, min_value=0.1, max_value=2.5, callback=self.update_preview)
+                    dpg.add_slider_float(label="Brightness", tag="brightness_slider", default_value=1.0, min_value=0.5, max_value=2.0, callback=self.update_preview)
+                with dpg.child_window(border=False):
+                    with dpg.group() as self.image_group:
+                        dpg.add_text("HDR preview will appear here")
+
+    def apply_theme(self):
+        with dpg.theme() as theme:
+            with dpg.theme_component(dpg.mvAll):
+                dpg.add_theme_style(dpg.mvStyleVar_WindowRounding, 5)
+                dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 5)
+        dpg.bind_theme(theme)
 
     def select_files(self):
         dpg.show_item("file_dialog")
@@ -58,7 +74,9 @@ class HDRGui:
             dpg.log_warning("Selected images do not contain enough AEB exposures.")
             return
         images = load_images(aeb_images)
-        self.hdr_image = create_hdr(images, exposure_times)
+        align = dpg.get_value("auto_align")
+        deghost = dpg.get_value("deghost")
+        self.hdr_image = create_hdr(images, exposure_times, align=align, deghost=deghost)
         self.ref_image = get_medium_exposure_image(images, exposure_times)
         self.update_preview()
         dpg.configure_item(self.save_btn, enabled=True)
@@ -108,16 +126,17 @@ class HDRGui:
 def main():
     dpg.create_context()
     gui = HDRGui()
+    gui.apply_theme()
     with dpg.file_dialog(directory_selector=False, show=False, callback=gui._file_selected, id="file_dialog", multiselect=True):
         dpg.add_file_extension(".jpg", color=(255, 255, 255, 255))
         dpg.add_file_extension(".jpeg", color=(255, 255, 255, 255))
         dpg.add_file_extension(".png", color=(255, 255, 255, 255))
         dpg.add_file_extension(".tif", color=(255, 255, 255, 255))
         dpg.add_file_extension(".tiff", color=(255, 255, 255, 255))
-    dpg.create_viewport(title="AEB Compositor", width=800, height=600)
+    dpg.create_viewport(title="AEB Compositor", width=820, height=620)
     dpg.setup_dearpygui()
     dpg.show_viewport()
-    dpg.set_primary_window(gui.image_group, True)
+    dpg.set_primary_window("main_window", True)
     dpg.start_dearpygui()
     dpg.destroy_context()
 
