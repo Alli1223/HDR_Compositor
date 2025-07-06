@@ -1,4 +1,4 @@
-# HDR Compositor
+# AEB Compositor
 
 This repository contains tools for merging Auto Exposure Bracketing (AEB) images into a single HDR photograph.
 
