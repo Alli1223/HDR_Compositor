@@ -89,10 +89,10 @@ export default function Home() {
   }, [groups]);
 
   return (
-    <main className="flex p-4 gap-4">
-      <div className="flex w-full gap-4">
+    <main className="min-h-screen flex items-center justify-center p-4">
+      <div className="grid grid-cols-3 gap-4 w-full max-w-5xl">
         {/* Left column: file input and grouped previews */}
-        <div className="flex flex-col items-start gap-4 w-1/3">
+        <div className="border rounded-lg p-4 flex flex-col items-center gap-4">
           <input
             id="file-input"
             type="file"
@@ -107,7 +107,7 @@ export default function Home() {
             </Button>
           </label>
           {groups.length > 0 && (
-            <div className="border rounded-lg p-2 w-full">
+            <div className="w-full">
               <div className="flex justify-end mb-2">
                 <Button size="small" variant="contained" onClick={handleCreateAll}>
                   Create All
@@ -142,10 +142,9 @@ export default function Home() {
         </div>
 
         {/* Middle column: settings and result */}
-        <div className="flex flex-col items-center justify-start flex-1">
-          <div className="border rounded-lg p-4 w-full max-w-sm mx-auto flex flex-col items-center gap-4">
-            <h2 className="text-lg font-semibold">Settings</h2>
-            <ol className="list-decimal pl-5 space-y-2 w-full">
+        <div className="border rounded-lg p-4 flex flex-col items-center gap-4">
+          <h2 className="text-lg font-semibold">Settings</h2>
+          <ol className="list-decimal pl-5 space-y-2 w-full">
               <li>
                 <label className="flex items-center gap-2">
                   <input
@@ -201,7 +200,7 @@ export default function Home() {
         </div>
 
         {/* Right column: loader */}
-        <div className="flex flex-col items-start gap-4 w-1/3">
+        <div className="border rounded-lg p-4 flex items-center justify-center">
           {loading && <CircularProgress />}
         </div>
       </div>
