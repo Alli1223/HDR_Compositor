@@ -122,11 +122,13 @@ export default function Home() {
     });
   };
 
+  // Clean up created object URLs when the component is unmounted
   useEffect(() => {
     return () => {
       resetURLs(groups);
     };
-  }, [groups]);
+    // Intentionally run only on mount/unmount
+  }, []);
 
   useEffect(() => {
     if (processingRef.current || queue.length === 0) return;
