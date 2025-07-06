@@ -230,7 +230,7 @@ export default function Home() {
     const g = groups[index];
     const s = g.settings;
     return (
-      <div className="border rounded-lg p-4 my-2 flex flex-col gap-4">
+      <Paper variant="outlined" className="p-4 my-2 flex flex-col gap-4">
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -297,16 +297,18 @@ export default function Home() {
             }
           />
         </div>
-      </div>
+      </Paper>
     );
   };
 
   return (
     <main className="flex flex-col items-center p-4 gap-4">
-      <div
-        className={`border-2 border-dashed rounded-lg p-8 text-center w-full max-w-xl cursor-pointer ${
+      <Paper
+        variant="outlined"
+        className={`p-8 text-center w-full max-w-xl cursor-pointer ${
           dragging ? "bg-gray-100" : ""
         }`}
+        sx={{ borderStyle: "dashed", borderWidth: 2 }}
         onDragOver={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -329,7 +331,7 @@ export default function Home() {
           className="hidden"
           onChange={handleFilesChange}
         />
-      </div>
+      </Paper>
 
       {thumbLoading && (
         <div className="w-full max-w-xl mt-2">
@@ -413,7 +415,7 @@ export default function Home() {
       {groups.length > 1 && (
         <div className="w-full max-w-xl">
           {groups.map((g, idx) => (
-            <div key={idx} className="border rounded-lg p-4 mb-4">
+            <Paper key={idx} variant="outlined" className="p-4 mb-4">
               <h3 className="text-sm font-semibold mb-2">Group {idx + 1}</h3>
               <div className="flex gap-4">
                 <div className="flex-1">
@@ -456,7 +458,7 @@ export default function Home() {
                   </div>
                 )}
               </div>
-            </div>
+            </Paper>
           ))}
           <div className="flex justify-end gap-2">
             <Button variant="contained" onClick={handleCreateAll}>
