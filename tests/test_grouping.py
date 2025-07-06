@@ -9,7 +9,7 @@ sys.path.append(str(ROOT.parent))
 
 from HDR_Compositor.find_and_merge_aeb import (
     group_images_by_datetime,
-    group_images_by_similarity,
+    group_images_by_hash,
 )
 import HDR_Compositor.group_uploads as group_uploads
 import HDR_Compositor.find_and_merge_aeb as find_and_merge_aeb
@@ -62,9 +62,8 @@ def test_group_images_similarity(monkeypatch):
     monkeypatch.setattr(find_and_merge_aeb.cv2, "imread", lambda p: p)
     monkeypatch.setattr(find_and_merge_aeb, "image_hash", lambda img, size=8: hash_map[img])
 
-    groups = group_images_by_similarity(
+    groups = group_images_by_hash(
         list(dates.keys()),
-        time_threshold=datetime.timedelta(seconds=0.5),
         hash_percent_threshold=10.0,
     )
     assert groups == [["a.jpg", "b.jpg"], ["c.jpg"]]
@@ -76,8 +75,8 @@ def test_group_uploads_main(monkeypatch, capsys):
     )
     monkeypatch.setattr(
         group_uploads,
-        "group_images_by_similarity",
-        lambda p, time_threshold=None, hash_percent_threshold=None: [p],
+        "group_images_by_hash",
+        lambda p, hash_percent_threshold=None: [p],
     )
     group_uploads.main(["x.jpg", "y.jpg"])
     out = capsys.readouterr().out.strip()

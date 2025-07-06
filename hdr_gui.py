@@ -2,14 +2,13 @@ import os
 import cv2
 import numpy as np
 import dearpygui.dearpygui as dpg
-from datetime import timedelta
 import logging
 
 try:  # support running as part of a package or as a script
     from .find_and_merge_aeb import (
         load_images,
         create_hdr,
-        group_images_by_similarity,
+        group_images_by_hash,
         get_exposure_times_from_list,
     )
     from .hdr_utils import get_medium_exposure_image, tonemap_mantiuk
@@ -17,7 +16,7 @@ except ImportError:  # pragma: no cover - fallback for direct execution
     from find_and_merge_aeb import (
         load_images,
         create_hdr,
-        group_images_by_similarity,
+        group_images_by_hash,
         get_exposure_times_from_list,
     )
     from hdr_utils import get_medium_exposure_image, tonemap_mantiuk
@@ -60,9 +59,8 @@ class HDRGui:
     def _files_selected_batch(self, sender, app_data):
         self.file_paths = list(app_data["selections"].values())
         self.logger.info("Batch selection received %d files", len(self.file_paths))
-        self.groups = group_images_by_similarity(
+        self.groups = group_images_by_hash(
             self.file_paths,
-            time_threshold=timedelta(seconds=0.5),
             hash_percent_threshold=10.0,
         )
         self.logger.info("Detected %d groups", len(self.groups))

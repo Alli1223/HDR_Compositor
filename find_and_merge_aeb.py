@@ -79,43 +79,34 @@ def _hash_to_hex(h: np.ndarray) -> str:
     return f"{int(bits, 2):0{len(h) // 4}x}"
 
 
-def group_images_by_similarity(
+def group_images_by_hash(
     image_paths,
     *,
-    time_threshold: timedelta = timedelta(seconds=0.5),
     hash_percent_threshold: float = 10.0,
 ):
-    """Group images taken within ``time_threshold`` if their hashes are similar.
+    """Group images purely by perceptual hash similarity.
 
-    Images are hashed using :func:`image_hash`. Two images are considered part of
-    the same group when their Hamming distance is within ``hash_percent_threshold``
-    percent of the hash length.
+    All images are hashed first and then clustered such that any two images
+    differing by ``hash_percent_threshold`` percent or less end up in the same
+    group.  Groups are discovered by treating images with small hash distances as
+    connected components in a graph.
     """
 
     logger = logging.getLogger(__name__)
-    logger.info("Grouping %d images by similarity", len(image_paths))
+    logger.info("Grouping %d images by hash", len(image_paths))
 
-    sorted_paths = sorted(
-        image_paths,
-        key=lambda p: extract_datetime(p) or datetime.min,
-    )
-
-    # Build list of (path, datetime, hash) while logging hashes
     items = []
-    for path in sorted_paths:
-        dt = extract_datetime(path)
-        if dt is None:
-            continue
+    for path in image_paths:
         img = cv2.imread(path)
         if img is None:
             continue
         h = image_hash(img)
         logger.info("Hash for %s: %s", path, _hash_to_hex(h))
-        items.append((path, dt, h))
+        items.append((path, h))
 
     # Log pairwise similarities
-    for i, (p1, _d1, h1) in enumerate(items):
-        for p2, _d2, h2 in items[i + 1 :]:
+    for i, (p1, h1) in enumerate(items):
+        for p2, h2 in [items[j] for j in range(i + 1, len(items))]:
             distance = np.count_nonzero(h1 != h2)
             diff_percent = distance / len(h1) * 100
             logger.info(
@@ -127,33 +118,31 @@ def group_images_by_similarity(
                 len(h1),
             )
 
-    # Perform grouping
+    # Build groups using connected components based on hash distance
+    n = len(items)
+    visited = [False] * n
     groups = []
-    current_group = []
-    current_dt = None
-    current_hash = None
 
-    for path, dt, h in items:
-        if not current_group:
-            current_group = [path]
-            current_dt = dt
-            current_hash = h
+    for i in range(n):
+        if visited[i]:
             continue
-
-        time_diff = dt - current_dt
-        distance = np.count_nonzero(current_hash != h)
-        diff_percent = distance / len(h) * 100
-
-        if time_diff <= time_threshold and diff_percent <= hash_percent_threshold:
-            current_group.append(path)
-        else:
-            groups.append(current_group)
-            current_group = [path]
-            current_dt = dt
-            current_hash = h
-
-    if current_group:
-        groups.append(current_group)
+        stack = [i]
+        visited[i] = True
+        group = []
+        while stack:
+            idx = stack.pop()
+            path_i, hash_i = items[idx]
+            group.append(path_i)
+            for j in range(n):
+                if visited[j]:
+                    continue
+                path_j, hash_j = items[j]
+                distance = np.count_nonzero(hash_i != hash_j)
+                diff_percent = distance / len(hash_i) * 100
+                if diff_percent <= hash_percent_threshold:
+                    visited[j] = True
+                    stack.append(j)
+        groups.append(group)
 
     logger.info("Formed %d groups", len(groups))
     for i, g in enumerate(groups, 1):
