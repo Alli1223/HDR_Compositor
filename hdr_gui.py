@@ -8,7 +8,7 @@ try:  # support running as part of a package or as a script
     from .find_and_merge_aeb import (
         load_images,
         create_hdr,
-        group_images_by_datetime,
+        group_images_by_similarity,
         get_exposure_times_from_list,
     )
     from .hdr_utils import get_medium_exposure_image, tonemap_mantiuk
@@ -16,7 +16,7 @@ except ImportError:  # pragma: no cover - fallback for direct execution
     from find_and_merge_aeb import (
         load_images,
         create_hdr,
-        group_images_by_datetime,
+        group_images_by_similarity,
         get_exposure_times_from_list,
     )
     from hdr_utils import get_medium_exposure_image, tonemap_mantiuk
@@ -54,7 +54,10 @@ class HDRGui:
 
     def _files_selected_batch(self, sender, app_data):
         self.file_paths = list(app_data["selections"].values())
-        self.groups = group_images_by_datetime(self.file_paths, threshold=timedelta(seconds=0.5))
+        self.groups = group_images_by_similarity(
+            self.file_paths,
+            time_threshold=timedelta(seconds=0.5),
+        )
         self.group_labels = [f"Group {i+1} ({len(g)} images)" for i, g in enumerate(self.groups)]
         dpg.configure_item(self.listbox, items=self.group_labels)
         dpg.configure_item(self.save_btn, enabled=False)

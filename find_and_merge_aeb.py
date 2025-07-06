@@ -57,6 +57,58 @@ def group_images_by_datetime(image_paths, threshold=timedelta(seconds=2)):
             grouped_images[-1][0].append(path)
     return [group for group, _ in grouped_images]
 
+def group_images_by_similarity(
+    image_paths,
+    *,
+    time_threshold: timedelta = timedelta(seconds=0.5),
+    similarity_threshold: float = 30.0,
+):
+    """Group images taken within `time_threshold` that are visually similar.
+
+    Similarity is evaluated by the mean absolute pixel difference between the
+    first image of a group and the candidate image. Images whose difference is
+    less than or equal to ``similarity_threshold`` (0-255 scale) are grouped
+    together.
+    """
+
+    sorted_paths = sorted(
+        image_paths,
+        key=lambda p: extract_datetime(p) or datetime.min,
+    )
+    groups = []
+    current_group = []
+    current_dt = None
+    current_img = None
+
+    for path in sorted_paths:
+        dt = extract_datetime(path)
+        if dt is None:
+            continue
+        img = cv2.imread(path)
+        if img is None:
+            continue
+        if not current_group:
+            current_group = [path]
+            current_dt = dt
+            current_img = img
+            continue
+
+        time_diff = dt - current_dt
+        diff = np.mean(cv2.absdiff(current_img, img))
+
+        if time_diff <= time_threshold and diff <= similarity_threshold:
+            current_group.append(path)
+        else:
+            groups.append(current_group)
+            current_group = [path]
+            current_dt = dt
+            current_img = img
+
+    if current_group:
+        groups.append(current_group)
+
+    return groups
+
 def get_exposure_times_from_list(image_paths):
     """Return exposure times for the given image paths."""
     valid_paths = []
