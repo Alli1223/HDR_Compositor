@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 import datetime
 import numpy as np
+import os
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT.parent))
@@ -81,3 +82,19 @@ def test_group_uploads_main(monkeypatch, capsys):
     group_uploads.main(["x.jpg", "y.jpg"])
     out = capsys.readouterr().out.strip()
     assert out == '[["x.jpg", "y.jpg"]]'
+
+
+def test_extract_datetime_fallback(tmp_path, monkeypatch):
+    img = tmp_path / "img.jpg"
+    img.write_bytes(b"x")
+    mtime = datetime.datetime.now().replace(microsecond=0)
+    os.utime(img, (mtime.timestamp(), mtime.timestamp()))
+
+    monkeypatch.setattr(
+        find_and_merge_aeb.subprocess,
+        "run",
+        lambda *a, **k: type("R", (), {"stdout": ""})(),
+    )
+
+    dt = find_and_merge_aeb.extract_datetime(str(img))
+    assert abs(dt.timestamp() - mtime.timestamp()) < 1

@@ -34,6 +34,7 @@ def find_aeb_images(directory):
     return aeb_images
 
 def extract_datetime(image_path):
+    """Return the image capture time or fall back to the file modification time."""
     cmd = f'exiftool -DateTimeOriginal -d "%Y:%m:%d %H:%M:%S" "{image_path}"'
     result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, text=True)
     datetime_str = ""
@@ -41,9 +42,15 @@ def extract_datetime(image_path):
         if "Date/Time Original" in line:
             datetime_str = line.split(": ", 1)[1]
             break
+    if datetime_str:
+        try:
+            return datetime.strptime(datetime_str.strip(), "%Y:%m:%d %H:%M:%S")
+        except ValueError:
+            pass
     try:
-        return datetime.strptime(datetime_str.strip(), "%Y:%m:%d %H:%M:%S")
-    except ValueError:
+        timestamp = os.path.getmtime(image_path)
+        return datetime.fromtimestamp(timestamp)
+    except Exception:
         return None
 
 def group_images_by_datetime(image_paths, threshold=timedelta(seconds=2)):
@@ -51,7 +58,7 @@ def group_images_by_datetime(image_paths, threshold=timedelta(seconds=2)):
     for path in image_paths:
         dt = extract_datetime(path)
         if not dt:
-            continue  # Skip images where datetime couldn't be extracted
+            continue
         if not grouped_images or (dt - grouped_images[-1][1] > threshold):
             grouped_images.append(([path], dt))
         else:
