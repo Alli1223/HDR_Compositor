@@ -10,6 +10,7 @@ from HDR_Compositor.hdr_utils import (
     get_medium_exposure_image,
     enhance_image,
     tonemap_mantiuk,
+    tonemap,
     align_images,
     remove_ghosts,
 )
@@ -73,3 +74,14 @@ def test_tonemap_gamma_brightness():
     normal = tonemap_mantiuk(hdr)
     adjusted = tonemap_mantiuk(hdr, gamma=0.5, brightness=1.5)
     assert adjusted.mean() >= normal.mean()
+
+
+def test_other_tone_mapping_algorithms():
+    base = np.arange(16 * 3, dtype=np.uint8).reshape(4, 4, 3)
+    images = [base, base + 20, base + 40]
+    times = [1 / 30, 1 / 60, 1 / 125]
+    hdr = create_hdr(images, times)
+    for algo in ("reinhard", "drago"):
+        ldr = tonemap(hdr, algorithm=algo)
+        assert ldr.dtype == np.uint8
+        assert ldr.shape == images[0].shape

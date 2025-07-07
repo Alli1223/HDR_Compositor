@@ -9,14 +9,14 @@ try:  # support running as part of a package or as a script
         load_images,
         create_hdr,
     )
-    from .hdr_utils import get_medium_exposure_image, tonemap_mantiuk
+    from .hdr_utils import get_medium_exposure_image, tonemap
 except ImportError:  # pragma: no cover - fallback for direct execution
     from find_and_merge_aeb import (
         find_aeb_images_and_exposure_times_from_list,
         load_images,
         create_hdr,
     )
-    from hdr_utils import get_medium_exposure_image, tonemap_mantiuk
+    from hdr_utils import get_medium_exposure_image, tonemap
 
 class HDRGui:
     def __init__(self):
@@ -38,6 +38,13 @@ class HDRGui:
                     self.save_btn = dpg.add_button(label="Save Result", callback=self.save_image, enabled=False)
                     dpg.add_separator()
                     dpg.add_text("Adjustments")
+                    dpg.add_radio_button(
+                        ("Mantiuk", "Reinhard", "Drago"),
+                        tag="tonemap_algo",
+                        default_value="Mantiuk",
+                        callback=self.update_preview,
+                        horizontal=True,
+                    )
                     dpg.add_slider_float(label="Saturation", tag="sat_slider", default_value=1.0, min_value=0.0, max_value=2.0, callback=self.update_preview)
                     dpg.add_slider_float(label="Contrast", tag="contrast_slider", default_value=1.0, min_value=0.0, max_value=2.0, callback=self.update_preview)
                     dpg.add_slider_float(label="Gamma", tag="gamma_slider", default_value=1.0, min_value=0.1, max_value=2.5, callback=self.update_preview)
@@ -88,9 +95,11 @@ class HDRGui:
         con = dpg.get_value("contrast_slider")
         gamma = dpg.get_value("gamma_slider")
         bright = dpg.get_value("brightness_slider")
-        self.ldr_image = tonemap_mantiuk(
+        algo = dpg.get_value("tonemap_algo").lower()
+        self.ldr_image = tonemap(
             self.hdr_image,
             self.ref_image,
+            algorithm=algo,
             saturation=sat,
             contrast=con,
             gamma=gamma,

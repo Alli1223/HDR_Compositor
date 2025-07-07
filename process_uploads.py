@@ -9,14 +9,14 @@ try:  # allow usage both as script and module
         load_images,
         create_hdr,
     )
-    from .hdr_utils import get_medium_exposure_image, tonemap_mantiuk
+    from .hdr_utils import get_medium_exposure_image, tonemap
 except ImportError:  # pragma: no cover - fallback for direct execution
     from find_and_merge_aeb import (
         find_aeb_images_and_exposure_times_from_list,
         load_images,
         create_hdr,
     )
-    from hdr_utils import get_medium_exposure_image, tonemap_mantiuk
+    from hdr_utils import get_medium_exposure_image, tonemap
 
 def main():
     parser = argparse.ArgumentParser(description="Process uploaded images")
@@ -27,6 +27,12 @@ def main():
     parser.add_argument("--saturation", type=float, default=1.0, help="tone mapping saturation")
     parser.add_argument("--gamma", type=float, default=1.0, help="tone mapping gamma")
     parser.add_argument("--brightness", type=float, default=1.0, help="output brightness scale")
+    parser.add_argument(
+        "--algorithm",
+        choices=["mantiuk", "reinhard", "drago"],
+        default="mantiuk",
+        help="tone mapping algorithm",
+    )
     args = parser.parse_args()
 
     if len(args.paths) < 2:
@@ -48,9 +54,10 @@ def main():
     hdr = create_hdr(images, exposure_times, align=args.align, deghost=args.deghost)
     progress(70)
     ref_image = get_medium_exposure_image(images, exposure_times)
-    ldr = tonemap_mantiuk(
+    ldr = tonemap(
         hdr,
         ref_image,
+        algorithm=args.algorithm,
         saturation=args.saturation,
         contrast=args.contrast,
         gamma=args.gamma,
