@@ -31,9 +31,12 @@ type Group = {
   progress?: number;
 };
 
+type LooseImage = { url: string; file: File; hash: Hash };
+
 export default function Home() {
   const [loading, setLoading] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [looseImages, setLooseImages] = useState<LooseImage[]>([]);
   const [dragging, setDragging] = useState(false);
   const [queue, setQueue] = useState<number[]>([]);
   const [thumbLoading, setThumbLoading] = useState(false);
@@ -45,15 +48,18 @@ export default function Home() {
     gs.forEach((g) => {
       g.results.forEach((r) => URL.revokeObjectURL(r.url));
     });
+    looseImages.forEach((li) => URL.revokeObjectURL(li.url));
   };
 
   const handleFiles = async (files: FileList | File[]) => {
     resetURLs(groups);
     if (!files || files.length === 0) {
       setGroups([]);
+      setLooseImages([]);
       return;
     }
     const newGroups: Group[] = [];
+    const ungrouped: LooseImage[] = [];
     const arr = Array.from(files);
     setThumbLoading(true);
     setThumbProgress(0);
@@ -78,8 +84,19 @@ export default function Home() {
       group.files.push(file);
       setThumbProgress(Math.round(((i + 1) / arr.length) * 100));
     }
+    const finalGroups: Group[] = [];
+    newGroups.forEach((g) => {
+      if (g.files.length >= 3) {
+        finalGroups.push(g);
+      } else {
+        g.urls.forEach((u, idx) => {
+          ungrouped.push({ url: u, file: g.files[idx], hash: g.hash });
+        });
+      }
+    });
     setThumbLoading(false);
-    setGroups(newGroups);
+    setGroups(finalGroups);
+    setLooseImages(ungrouped);
   };
 
   const handleFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,6 +111,54 @@ export default function Home() {
     if (e.dataTransfer.files) {
       await handleFiles(e.dataTransfer.files);
     }
+  };
+
+  const handleLooseDragStart = (index: number) => (e: React.DragEvent<HTMLImageElement>) => {
+    e.dataTransfer.setData("text/plain", String(index));
+  };
+
+  const handleDropOnGroup = (index: number) => (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const imgIdx = parseInt(e.dataTransfer.getData("text/plain"), 10);
+    if (isNaN(imgIdx)) return;
+    const item = looseImages[imgIdx];
+    if (!item) return;
+    setGroups((gs) => {
+      const copy = [...gs];
+      const g = copy[index];
+      g.urls.push(item.url);
+      g.files.push(item.file);
+      g.status = "idle";
+      return copy;
+    });
+    setLooseImages((ls) => {
+      const arr = [...ls];
+      arr.splice(imgIdx, 1);
+      return arr;
+    });
+  };
+
+  const handleDropNewGroup = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const imgIdx = parseInt(e.dataTransfer.getData("text/plain"), 10);
+    if (isNaN(imgIdx)) return;
+    const item = looseImages[imgIdx];
+    if (!item) return;
+    const newGroup: Group = {
+      hash: item.hash,
+      urls: [item.url],
+      files: [item.file],
+      results: [],
+      settings: { autoAlign: false, antiGhost: false, contrast: 1, saturation: 1 },
+      status: "idle",
+      progress: 0,
+    };
+    setGroups((gs) => [...gs, newGroup]);
+    setLooseImages((ls) => {
+      const arr = [...ls];
+      arr.splice(imgIdx, 1);
+      return arr;
+    });
   };
 
   const enqueueHDR = (index: number) => {
@@ -309,12 +374,41 @@ export default function Home() {
   };
 
   return (
-    <main className="flex flex-col items-center p-4 gap-4">
-      <h1 className="text-3xl font-bold">HDR Compositor</h1>
-      <p className="text-center max-w-xl">
-        Select your bracketed images to merge them into a single high dynamic
-        range photo.
-      </p>
+    <main className="flex flex-col md:flex-row items-start p-4 gap-4">
+      <div className="md:w-60">
+        {looseImages.length > 0 && (
+          <Paper variant="outlined" className="p-2" elevation={3}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Ungrouped Images
+            </Typography>
+            <div className="grid grid-cols-3 gap-2">
+              {looseImages.map((img, i) => (
+                <img
+                  key={i}
+                  src={img.url}
+                  draggable
+                  onDragStart={handleLooseDragStart(i)}
+                  className="w-16 h-16 object-cover rounded-lg cursor-grab"
+                />
+              ))}
+            </div>
+            <div
+              className="mt-2 p-2 border border-dashed rounded text-center text-sm"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDropNewGroup}
+            >
+              Drop here to create group
+            </div>
+          </Paper>
+        )}
+      </div>
+
+      <div className="flex-1 flex flex-col items-center gap-4">
+        <h1 className="text-3xl font-bold">HDR Compositor</h1>
+        <p className="text-center max-w-xl">
+          Select your bracketed images to merge them into a single high dynamic
+          range photo.
+        </p>
 
       <Paper
         elevation={3}
@@ -380,7 +474,12 @@ export default function Home() {
       {groups.length === 1 && (
         <div className="w-full max-w-2xl grid gap-4">
           <div className="grid md:grid-cols-2 gap-4">
-            <Paper className="p-4 grid gap-4" elevation={3}>
+            <Paper
+              className="p-4 grid gap-4"
+              elevation={3}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDropOnGroup(0)}
+            >
               <div className="grid grid-cols-3 gap-2">
                 {groups[0].urls.map((src) => (
                   <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
@@ -436,7 +535,13 @@ export default function Home() {
       {groups.length > 1 && (
         <div className="w-full max-w-3xl grid gap-4 md:grid-cols-2">
           {groups.map((g, idx) => (
-            <Paper key={idx} variant="outlined" className="p-4 grid gap-4">
+            <Paper
+              key={idx}
+              variant="outlined"
+              className="p-4 grid gap-4"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDropOnGroup(idx)}
+            >
               <h3 className="text-sm font-semibold mb-2">Group {idx + 1}</h3>
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="grid gap-4">
@@ -511,6 +616,7 @@ export default function Home() {
           <img src={fullscreenUrl} className="max-w-full max-h-full" />
         </div>
       )}
+      </div>
     </main>
   );
 }
