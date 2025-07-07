@@ -19,11 +19,13 @@ type Settings = {
   saturation: number;
 };
 
+type Result = { url: string; settings: Settings };
+
 type Group = {
   hash: Hash;
   urls: string[];
   files: File[];
-  resultUrl?: string;
+  results: Result[];
   settings: Settings;
   status?: "idle" | "queued" | "processing" | "done" | "error";
   progress?: number;
@@ -36,11 +38,12 @@ export default function Home() {
   const [queue, setQueue] = useState<number[]>([]);
   const [thumbLoading, setThumbLoading] = useState(false);
   const [thumbProgress, setThumbProgress] = useState(0);
+  const [fullscreenUrl, setFullscreenUrl] = useState<string | null>(null);
   const processingRef = useRef(false);
 
   const resetURLs = (gs: Group[]) => {
     gs.forEach((g) => {
-      if (g.resultUrl) URL.revokeObjectURL(g.resultUrl);
+      g.results.forEach((r) => URL.revokeObjectURL(r.url));
     });
   };
 
@@ -64,6 +67,7 @@ export default function Home() {
           hash,
           urls: [],
           files: [],
+          results: [],
           settings: { autoAlign: false, antiGhost: false, contrast: 1, saturation: 1 },
           status: "idle",
           progress: 0,
@@ -95,7 +99,7 @@ export default function Home() {
   const enqueueHDR = (index: number) => {
     setGroups((gs) => {
       const copy = [...gs];
-      if (copy[index].status === "idle" || copy[index].status === "error") {
+      if (copy[index].status !== "processing" && copy[index].status !== "queued") {
         copy[index].status = "queued";
         copy[index].progress = 0;
         setQueue((q) => [...q, index]);
@@ -117,11 +121,13 @@ export default function Home() {
 
   const handleDownloadAll = () => {
     groups.forEach((g, idx) => {
-      if (g.resultUrl) {
-        const name = groups.length === 1 ?
-          "hdr_result.jpg" : `hdr_group_${idx + 1}.jpg`;
-        triggerDownload(g.resultUrl, name);
-      }
+      g.results.forEach((r, j) => {
+        const name =
+          groups.length === 1 && g.results.length === 1
+            ? "hdr_result.jpg"
+            : `hdr_group_${idx + 1}_${j + 1}.jpg`;
+        triggerDownload(r.url, name);
+      });
     });
   };
 
@@ -200,9 +206,10 @@ export default function Home() {
         if (resultUrl) {
           setGroups((gs) => {
             const copy = [...gs];
-            const prev = copy[index].resultUrl;
-            if (prev) URL.revokeObjectURL(prev);
-            copy[index] = { ...copy[index], resultUrl, status: "done", progress: 100 };
+            const settingsCopy = { ...copy[index].settings };
+            copy[index].results.push({ url: resultUrl!, settings: settingsCopy });
+            copy[index].status = "done";
+            copy[index].progress = 100;
             return copy;
           });
         } else {
@@ -398,17 +405,25 @@ export default function Home() {
                 )}
               </div>
             </Paper>
-            {groups[0].resultUrl && (
-              <Paper className="flex flex-col items-center gap-2 p-2" elevation={3}>
-                <Typography variant="subtitle2">HDR Result</Typography>
-                <img src={groups[0].resultUrl} className="w-48 h-48 object-cover rounded-lg" />
-                <a href={groups[0].resultUrl} download="hdr_result.jpg">
-                  <Button variant="outlined" color="secondary" size="small">Download</Button>
-                </a>
-              </Paper>
+            {groups[0].results.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {groups[0].results.map((r, i) => (
+                  <Paper key={i} className="flex flex-col items-center gap-2 p-2" elevation={3}>
+                    <Typography variant="subtitle2">HDR Result {i + 1}</Typography>
+                    <img
+                      src={r.url}
+                      className="w-48 h-48 object-cover rounded-lg cursor-pointer"
+                      onClick={() => setFullscreenUrl(r.url)}
+                    />
+                    <a href={r.url} download={`hdr_result_${i + 1}.jpg`}>
+                      <Button variant="outlined" color="secondary" size="small">Download</Button>
+                    </a>
+                  </Paper>
+                ))}
+              </div>
             )}
           </div>
-          {groups[0].resultUrl && (
+          {groups[0].results.length > 0 && (
             <div className="flex justify-end">
               <Button variant="outlined" color="secondary" onClick={handleDownloadAll}>
                 Download All
@@ -454,14 +469,22 @@ export default function Home() {
                     )}
                   </div>
                 </div>
-                {g.resultUrl && (
-                  <Paper className="flex flex-col items-center gap-2 p-2" elevation={3}>
-                    <Typography variant="subtitle2">HDR Result</Typography>
-                    <img src={g.resultUrl} className="w-48 h-48 object-cover rounded-lg" />
-                    <a href={g.resultUrl} download={`hdr_group_${idx + 1}.jpg`}>
-                      <Button size="small" variant="outlined" color="secondary">Download</Button>
-                    </a>
-                  </Paper>
+                {g.results.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    {g.results.map((r, j) => (
+                      <Paper key={j} className="flex flex-col items-center gap-2 p-2" elevation={3}>
+                        <Typography variant="subtitle2">HDR Result {j + 1}</Typography>
+                        <img
+                          src={r.url}
+                          className="w-48 h-48 object-cover rounded-lg cursor-pointer"
+                          onClick={() => setFullscreenUrl(r.url)}
+                        />
+                        <a href={r.url} download={`hdr_group_${idx + 1}_${j + 1}.jpg`}>
+                          <Button size="small" variant="outlined" color="secondary">Download</Button>
+                        </a>
+                      </Paper>
+                    ))}
+                  </div>
                 )}
               </div>
             </Paper>
@@ -470,7 +493,7 @@ export default function Home() {
             <Button variant="contained" onClick={handleCreateAll}>
               Create All
             </Button>
-            {groups.some((g) => g.resultUrl) && (
+            {groups.some((g) => g.results.length > 0) && (
               <Button variant="outlined" color="secondary" onClick={handleDownloadAll}>
                 Download All
               </Button>
@@ -480,6 +503,14 @@ export default function Home() {
       )}
 
       {loading && <CircularProgress />}
+      {fullscreenUrl && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
+          onClick={() => setFullscreenUrl(null)}
+        >
+          <img src={fullscreenUrl} className="max-w-full max-h-full" />
+        </div>
+      )}
     </main>
   );
 }
