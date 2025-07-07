@@ -308,6 +308,7 @@ export default function Home() {
         Select your bracketed images to merge them into a single high dynamic
         range photo.
       </p>
+
       <Paper
         elevation={3}
         className={`p-8 text-center w-full max-w-xl cursor-pointer ${
@@ -370,38 +371,37 @@ export default function Home() {
       )}
 
       {groups.length === 1 && (
-        <div className="w-full max-w-xl">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <div className="grid grid-cols-3 gap-2 mb-2">
+        <div className="w-full max-w-2xl grid gap-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <Paper className="p-4 grid gap-4" elevation={3}>
+              <div className="grid grid-cols-3 gap-2">
                 {groups[0].urls.map((src) => (
                   <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
                 ))}
               </div>
               {renderSettings(0)}
-              <Button variant="contained" onClick={() => enqueueHDR(0)}>
-                Create HDR
-              </Button>
-              {groups[0].status && groups[0].status !== "idle" && (
-                <>
-                  <p className="text-sm mt-1">Status: {groups[0].status}</p>
-                  {groups[0].status === "processing" && (
-                    <LinearProgress
-                      sx={{ mt: 1 }}
-                      variant="determinate"
-                      value={groups[0].progress ?? 0}
-                    />
-                  )}
-                </>
-              )}
-            </div>
+              <div className="flex items-center gap-2">
+                <Button variant="contained" onClick={() => enqueueHDR(0)}>
+                  Create HDR
+                </Button>
+                {groups[0].status && groups[0].status !== "idle" && (
+                  <>
+                    <p className="text-sm">Status: {groups[0].status}</p>
+                    {groups[0].status === "processing" && (
+                      <LinearProgress
+                        sx={{ mt: 1 }}
+                        variant="determinate"
+                        value={groups[0].progress ?? 0}
+                      />
+                    )}
+                  </>
+                )}
+              </div>
+            </Paper>
             {groups[0].resultUrl && (
               <Paper className="flex flex-col items-center gap-2 p-2" elevation={3}>
                 <Typography variant="subtitle2">HDR Result</Typography>
-                <img
-                  src={groups[0].resultUrl}
-                  className="w-48 h-48 object-cover rounded-lg"
-                />
+                <img src={groups[0].resultUrl} className="w-48 h-48 object-cover rounded-lg" />
                 <a href={groups[0].resultUrl} download="hdr_result.jpg">
                   <Button variant="outlined" color="secondary" size="small">Download</Button>
                 </a>
@@ -409,7 +409,7 @@ export default function Home() {
             )}
           </div>
           {groups[0].resultUrl && (
-            <div className="flex justify-end mt-2">
+            <div className="flex justify-end">
               <Button variant="outlined" color="secondary" onClick={handleDownloadAll}>
                 Download All
               </Button>
@@ -419,46 +419,45 @@ export default function Home() {
       )}
 
       {groups.length > 1 && (
-        <div className="w-full max-w-xl">
+        <div className="w-full max-w-3xl grid gap-4 md:grid-cols-2">
           {groups.map((g, idx) => (
-            <Paper key={idx} variant="outlined" className="p-4 mb-4">
+            <Paper key={idx} variant="outlined" className="p-4 grid gap-4">
               <h3 className="text-sm font-semibold mb-2">Group {idx + 1}</h3>
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <div className="grid grid-cols-3 gap-2 mb-2">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-3 gap-2">
                     {g.urls.map((src) => (
                       <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
                     ))}
                   </div>
-                  <details className="mb-2">
+                  <details>
                     <summary>
                       <Button variant="outlined" size="small">Settings</Button>
                     </summary>
                     {renderSettings(idx)}
                   </details>
-                  <Button variant="contained" size="small" onClick={() => enqueueHDR(idx)}>
-                    Create HDR
-                  </Button>
-                  {g.status && g.status !== "idle" && (
-                    <>
-                      <p className="text-xs mt-1">Status: {g.status}</p>
-                      {g.status === "processing" && (
-                        <LinearProgress
-                          sx={{ mt: 1 }}
-                          variant="determinate"
-                          value={g.progress ?? 0}
-                        />
-                      )}
-                    </>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Button variant="contained" size="small" onClick={() => enqueueHDR(idx)}>
+                      Create HDR
+                    </Button>
+                    {g.status && g.status !== "idle" && (
+                      <>
+                        <p className="text-xs">Status: {g.status}</p>
+                        {g.status === "processing" && (
+                          <LinearProgress
+                            sx={{ mt: 1 }}
+                            variant="determinate"
+                            value={g.progress ?? 0}
+                          />
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
                 {g.resultUrl && (
                   <Paper className="flex flex-col items-center gap-2 p-2" elevation={3}>
                     <Typography variant="subtitle2">HDR Result</Typography>
-                    <img
-                      src={g.resultUrl}
-                      className="w-48 h-48 object-cover rounded-lg"
-                    />
+                    <img src={g.resultUrl} className="w-48 h-48 object-cover rounded-lg" />
                     <a href={g.resultUrl} download={`hdr_group_${idx + 1}.jpg`}>
                       <Button size="small" variant="outlined" color="secondary">Download</Button>
                     </a>
@@ -467,7 +466,7 @@ export default function Home() {
               </div>
             </Paper>
           ))}
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 md:col-span-2">
             <Button variant="contained" onClick={handleCreateAll}>
               Create All
             </Button>
