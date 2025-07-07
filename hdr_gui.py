@@ -9,14 +9,24 @@ try:  # support running as part of a package or as a script
         load_images,
         create_hdr,
     )
-    from .hdr_utils import get_medium_exposure_image, tonemap_mantiuk
+    from .hdr_utils import (
+        get_medium_exposure_image,
+        tonemap_mantiuk,
+        align_images,
+        remove_ghosts,
+    )
 except ImportError:  # pragma: no cover - fallback for direct execution
     from find_and_merge_aeb import (
         find_aeb_images_and_exposure_times_from_list,
         load_images,
         create_hdr,
     )
-    from hdr_utils import get_medium_exposure_image, tonemap_mantiuk
+    from hdr_utils import (
+        get_medium_exposure_image,
+        tonemap_mantiuk,
+        align_images,
+        remove_ghosts,
+    )
 
 class HDRGui:
     def __init__(self):
@@ -34,6 +44,8 @@ class HDRGui:
                     self.listbox = dpg.add_listbox(items=[], num_items=6, width=240)
                     dpg.add_checkbox(label="Auto Align", tag="auto_align")
                     dpg.add_checkbox(label="Deghost", tag="deghost")
+                    dpg.add_button(label="Preview Alignment", callback=self.preview_alignment)
+                    dpg.add_button(label="Preview Deghost", callback=self.preview_deghost)
                     dpg.add_button(label="Create HDR", callback=self.create_hdr_image)
                     self.save_btn = dpg.add_button(label="Save Result", callback=self.save_image, enabled=False)
                     dpg.add_separator()
@@ -97,6 +109,44 @@ class HDRGui:
             brightness=bright,
         )
         self.display_image(self.ldr_image)
+
+    def preview_alignment(self):
+        """Show a preview of the images after alignment."""
+        if len(self.file_paths) < 3:
+            dpg.show_logger()
+            dpg.log_warning("Select at least three images.")
+            return
+        aeb_images, exposure_times = find_aeb_images_and_exposure_times_from_list(self.file_paths)
+        if len(aeb_images) < 3:
+            dpg.show_logger()
+            dpg.log_warning("Selected images do not contain enough AEB exposures.")
+            return
+        images = load_images(aeb_images)
+        aligned = align_images(images)
+        hdr = create_hdr(aligned, exposure_times)
+        ref = get_medium_exposure_image(aligned, exposure_times)
+        preview = tonemap_mantiuk(hdr, ref)
+        self.display_image(preview)
+
+    def preview_deghost(self):
+        """Show a preview after applying ghost removal."""
+        if len(self.file_paths) < 3:
+            dpg.show_logger()
+            dpg.log_warning("Select at least three images.")
+            return
+        aeb_images, exposure_times = find_aeb_images_and_exposure_times_from_list(self.file_paths)
+        if len(aeb_images) < 3:
+            dpg.show_logger()
+            dpg.log_warning("Selected images do not contain enough AEB exposures.")
+            return
+        images = load_images(aeb_images)
+        if dpg.get_value("auto_align"):
+            images = align_images(images)
+        deghosted = remove_ghosts(images)
+        hdr = create_hdr(deghosted, exposure_times)
+        ref = get_medium_exposure_image(deghosted, exposure_times)
+        preview = tonemap_mantiuk(hdr, ref)
+        self.display_image(preview)
 
     def display_image(self, img):
         rgba = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)

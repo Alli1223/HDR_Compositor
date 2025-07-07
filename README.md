@@ -28,6 +28,7 @@ make gui
 
 After selecting images, click **Create HDR** and then **Save Result** to write `hdr_result.jpg` next to the chosen files.
 Use the sliders to tweak saturation, contrast, gamma and brightness before saving.
+Two extra buttons let you preview how **Auto Align** and **Deghost** will affect the result before creating the final HDR.
 
 ## Web Interface
 
