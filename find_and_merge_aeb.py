@@ -95,7 +95,8 @@ def find_aeb_images_and_exposure_times_from_list(image_paths):
                 except ValueError:
                     # Handle images without a valid exposure time or where parsing fails
                     print(
-                        f"Warning: Could not parse exposure time for image {os.path.basename(image_path)} with value '{exposure_time_str}'. Skipping this image."
+                        f"Warning: Could not parse exposure time for image {os.path.basename(image_path)} with value '{exposure_time_str}'. Skipping this image.",
+                        file=sys.stderr,
                     )
                     aeb_images.pop()  # Remove the last image added since it has no valid exposure time
                     continue  # Skip further processing for this image
