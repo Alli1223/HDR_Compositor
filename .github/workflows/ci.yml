@@ -29,4 +29,7 @@ jobs:
         run: |
           npm --prefix frontend run build
           pytest -q
+      - name: Build Docker image
+        run: |
+          docker build -f Dockerfile.web -t hdr-webapp .
 
