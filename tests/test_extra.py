@@ -30,16 +30,17 @@ def test_group_images_missing_datetime(monkeypatch):
 def test_find_aeb_images_and_exposure_times(monkeypatch):
     calls = []
 
-    def fake_run(cmd, shell, stdout, text):
+    def fake_run(cmd, *a, **kw):
         calls.append(cmd)
         class R:
             def __init__(self, out):
                 self.stdout = out
-        if 'XPKeywords' in cmd:
-            if 'img1.jpg' in cmd:
+        cmd_str = ' '.join(cmd) if isinstance(cmd, list) else str(cmd)
+        if 'XPKeywords' in cmd_str:
+            if 'img1.jpg' in cmd_str:
                 return R('AEB')
             return R('')
-        if 'ExposureTime' in cmd:
+        if 'ExposureTime' in cmd_str:
             return R('1/60')
         return R('')
 
@@ -48,5 +49,5 @@ def test_find_aeb_images_and_exposure_times(monkeypatch):
     assert images == ['img1.jpg']
     assert times == [1/60]
     # Ensure subprocess.run was called for each image
-    assert any('XPKeywords "img1.jpg"' in c for c in calls)
+    assert any(isinstance(c, list) and c[:3] == ['exiftool', '-XPKeywords', 'img1.jpg'] for c in calls)
 

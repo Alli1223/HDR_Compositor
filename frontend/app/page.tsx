@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useReducer, useEffect, useRef } from "react";
 import type { Hash } from "./lib/imageHash";
 import { computeHash, hamming, createThumbnail } from "./lib/imageHash";
 import Button from "@mui/material/Button";
@@ -29,9 +29,34 @@ type Group = {
   progress?: number;
 };
 
+type GroupsAction =
+  | { type: "set"; groups: Group[] }
+  | { type: "update"; index: number; changes: Partial<Group> }
+  | { type: "resetUrls" };
+
+function groupsReducer(state: Group[], action: GroupsAction): Group[] {
+  switch (action.type) {
+    case "set":
+      return action.groups;
+    case "update":
+      return state.map((g, i) =>
+        i === action.index
+          ? { ...g, ...action.changes, settings: { ...g.settings, ...action.changes.settings } }
+          : g
+      );
+    case "resetUrls":
+      state.forEach((g) => {
+        if (g.resultUrl) URL.revokeObjectURL(g.resultUrl);
+      });
+      return state.map((g) => ({ ...g, resultUrl: undefined }));
+    default:
+      return state;
+  }
+}
+
 export default function Home() {
   const [loading, setLoading] = useState(false);
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [groups, dispatch] = useReducer(groupsReducer, [] as Group[]);
   const [dragging, setDragging] = useState(false);
   const [queue, setQueue] = useState<number[]>([]);
   const [thumbLoading, setThumbLoading] = useState(false);
@@ -44,11 +69,11 @@ export default function Home() {
     });
   };
 
-  const handleFiles = async (files: FileList | File[]) => {
-    resetURLs(groups);
-    if (!files || files.length === 0) {
-      setGroups([]);
-      return;
+    const handleFiles = async (files: FileList | File[]) => {
+      resetURLs(groups);
+      if (!files || files.length === 0) {
+        dispatch({ type: "set", groups: [] });
+        return;
     }
     const newGroups: Group[] = [];
     const arr = Array.from(files);
@@ -74,8 +99,8 @@ export default function Home() {
       group.files.push(file);
       setThumbProgress(Math.round(((i + 1) / arr.length) * 100));
     }
-    setThumbLoading(false);
-    setGroups(newGroups);
+      setThumbLoading(false);
+      dispatch({ type: "set", groups: newGroups });
   };
 
   const handleFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,17 +117,16 @@ export default function Home() {
     }
   };
 
-  const enqueueHDR = (index: number) => {
-    setGroups((gs) => {
-      const copy = [...gs];
-      if (copy[index].status === "idle" || copy[index].status === "error") {
-        copy[index].status = "queued";
-        copy[index].progress = 0;
-        setQueue((q) => [...q, index]);
-      }
-      return copy;
-    });
-  };
+    const enqueueHDR = (index: number) => {
+      const g = groups[index];
+      if (!g || (g.status !== "idle" && g.status !== "error")) return;
+      dispatch({
+        type: "update",
+        index,
+        changes: { status: "queued", progress: 0 },
+      });
+      setQueue((q) => [...q, index]);
+    };
 
   const handleCreateAll = async () => {
     groups.forEach((_, i) => enqueueHDR(i));
@@ -128,21 +152,17 @@ export default function Home() {
   // Clean up created object URLs when the component is unmounted
   useEffect(() => {
     return () => {
-      resetURLs(groups);
+      dispatch({ type: "resetUrls" });
     };
     // Intentionally run only on mount/unmount
   }, []);
 
-  useEffect(() => {
-    if (processingRef.current || queue.length === 0) return;
-    const index = queue[0];
-    processingRef.current = true;
-    setGroups((gs) => {
-      const copy = [...gs];
-      copy[index].status = "processing";
-      return copy;
-    });
-    const run = async () => {
+    useEffect(() => {
+      if (processingRef.current || queue.length === 0) return;
+      const index = queue[0];
+      processingRef.current = true;
+      dispatch({ type: "update", index, changes: { status: "processing" } });
+      const run = async () => {
       const g = groups[index];
       const { autoAlign, antiGhost, contrast, saturation } = g.settings;
       const formData = new FormData();
@@ -178,13 +198,13 @@ export default function Home() {
             if (field === "event") {
               currentEvent = valueStr;
             } else if (field === "data") {
-              if (currentEvent === "progress") {
-                const pct = parseInt(valueStr, 10);
-                setGroups((gs) => {
-                  const copy = [...gs];
-                  copy[index].progress = pct;
-                  return copy;
-                });
+                if (currentEvent === "progress") {
+                  const pct = parseInt(valueStr, 10);
+                  dispatch({
+                    type: "update",
+                    index,
+                    changes: { progress: pct },
+                  });
               } else if (currentEvent === "done") {
                 const byteString = atob(valueStr);
                 const bytes = new Uint8Array(byteString.length);
@@ -197,28 +217,20 @@ export default function Home() {
             }
           }
         }
-        if (resultUrl) {
-          setGroups((gs) => {
-            const copy = [...gs];
-            const prev = copy[index].resultUrl;
+          if (resultUrl) {
+            const prev = groups[index].resultUrl;
             if (prev) URL.revokeObjectURL(prev);
-            copy[index] = { ...copy[index], resultUrl, status: "done", progress: 100 };
-            return copy;
-          });
-        } else {
-          setGroups((gs) => {
-            const copy = [...gs];
-            copy[index].status = "error";
-            return copy;
-          });
+            dispatch({
+              type: "update",
+              index,
+              changes: { resultUrl, status: "done", progress: 100 },
+            });
+          } else {
+            dispatch({ type: "update", index, changes: { status: "error" } });
+          }
+        } catch (e) {
+        dispatch({ type: "update", index, changes: { status: "error" } });
         }
-      } catch (e) {
-        setGroups((gs) => {
-          const copy = [...gs];
-          copy[index].status = "error";
-          return copy;
-        });
-      }
       setLoading(false);
       setQueue((q) => q.slice(1));
       processingRef.current = false;
@@ -235,13 +247,13 @@ export default function Home() {
           <input
             type="checkbox"
             checked={s.autoAlign}
-            onChange={(e) =>
-              setGroups((gs) => {
-                const copy = [...gs];
-                copy[index].settings.autoAlign = e.target.checked;
-                return copy;
-              })
-            }
+              onChange={(e) =>
+                dispatch({
+                  type: "update",
+                  index,
+                  changes: { settings: { autoAlign: e.target.checked } },
+                })
+              }
           />
           Auto Alignment
         </label>
@@ -249,13 +261,13 @@ export default function Home() {
           <input
             type="checkbox"
             checked={s.antiGhost}
-            onChange={(e) =>
-              setGroups((gs) => {
-                const copy = [...gs];
-                copy[index].settings.antiGhost = e.target.checked;
-                return copy;
-              })
-            }
+              onChange={(e) =>
+                dispatch({
+                  type: "update",
+                  index,
+                  changes: { settings: { antiGhost: e.target.checked } },
+                })
+              }
           />
           Anti-Ghosting
         </label>
@@ -270,10 +282,10 @@ export default function Home() {
             step={0.05}
             value={s.contrast}
             onChange={(_, v) =>
-              setGroups((gs) => {
-                const copy = [...gs];
-                copy[index].settings.contrast = v as number;
-                return copy;
+              dispatch({
+                type: "update",
+                index,
+                changes: { settings: { contrast: v as number } },
               })
             }
           />
@@ -289,10 +301,10 @@ export default function Home() {
             step={0.05}
             value={s.saturation}
             onChange={(_, v) =>
-              setGroups((gs) => {
-                const copy = [...gs];
-                copy[index].settings.saturation = v as number;
-                return copy;
+              dispatch({
+                type: "update",
+                index,
+                changes: { settings: { saturation: v as number } },
               })
             }
           />

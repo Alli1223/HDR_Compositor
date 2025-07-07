@@ -65,6 +65,7 @@ export async function POST(req: Request) {
         const data = await fs.readFile(finalPath || outputPath);
         send('done', data.toString('base64'));
       } finally {
+        await fs.rm(dir, { recursive: true, force: true });
         writer.close();
       }
     });

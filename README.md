@@ -59,7 +59,11 @@ Install the Python dependencies using the provided `requirements.txt` file:
 pip install -r requirements.txt
 ```
 
-The tools rely on `opencv-python-headless`, `numpy` and `dearpygui` in addition to `exiftool`. On Debian based systems you can install exiftool with `apt-get install exiftool`.
+The tools rely on `opencv-python-headless`, `numpy` and `dearpygui` in addition to `exiftool`.
+On Debian based systems you can install exiftool with `apt-get install exiftool`.
+For the web interface you will also need a recent Node.js runtime. From the
+`frontend` folder run `npm install` once and then `npm run dev` to start the
+development server.
 
 ### Release Process
 

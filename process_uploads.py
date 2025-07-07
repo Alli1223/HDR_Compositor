@@ -3,6 +3,7 @@ import os
 import cv2
 import numpy as np
 import argparse
+import subprocess
 try:  # allow usage both as script and module
     from .find_and_merge_aeb import (
         find_aeb_images_and_exposure_times_from_list,
@@ -34,7 +35,14 @@ def main():
         sys.exit(1)
 
     *image_paths, output_path = args.paths
-    aeb_images, exposure_times = find_aeb_images_and_exposure_times_from_list(image_paths)
+    try:
+        aeb_images, exposure_times = find_aeb_images_and_exposure_times_from_list(image_paths)
+    except FileNotFoundError:
+        print("Error: exiftool not found. Is it installed?", file=sys.stderr)
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:  # type: ignore
+        print(f"Error running exiftool: {e}", file=sys.stderr)
+        sys.exit(1)
     if not aeb_images:
         print("No AEB-tagged images found", file=sys.stderr)
         sys.exit(1)

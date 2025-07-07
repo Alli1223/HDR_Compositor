@@ -26,15 +26,29 @@ def find_aeb_images(directory):
     for image_file in image_files:
         image_path = os.path.join(directory, image_file)
         # Use exiftool to get XP Keywords tag for the image
-        cmd = f'exiftool -XPKeywords "{image_path}"'
-        result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, text=True)
+        cmd = ["exiftool", "-XPKeywords", image_path]
+        try:
+            result = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, text=True)
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            print(f"Error running exiftool for {image_path}: {e}", file=sys.stderr)
+            continue
         if 'aeb' in result.stdout.lower():
             aeb_images.append(image_path)
     return aeb_images
 
 def extract_datetime(image_path):
-    cmd = f'exiftool -DateTimeOriginal -d "%Y:%m:%d %H:%M:%S" "{image_path}"'
-    result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, text=True)
+    cmd = [
+        "exiftool",
+        "-DateTimeOriginal",
+        "-d",
+        "%Y:%m:%d %H:%M:%S",
+        image_path,
+    ]
+    try:
+        result = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, text=True)
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        print(f"Error running exiftool for {image_path}: {e}", file=sys.stderr)
+        return None
     datetime_str = ""
     for line in result.stdout.split("\n"):
         if "Date/Time Original" in line:
@@ -62,13 +76,29 @@ def find_aeb_images_and_exposure_times_from_list(image_paths):
     exposure_times = []
     for image_path in image_paths:
         # Check for 'aeb' in XP Keywords
-        keywords_cmd = f'exiftool -XPKeywords "{image_path}"'
-        keywords_result = subprocess.run(keywords_cmd, shell=True, stdout=subprocess.PIPE, text=True)
+        keywords_cmd = ["exiftool", "-XPKeywords", image_path]
+        try:
+            keywords_result = subprocess.run(
+                keywords_cmd, check=True, stdout=subprocess.PIPE, text=True
+            )
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            print(f"Error running exiftool for {image_path}: {e}", file=sys.stderr)
+            continue
         if 'aeb' in keywords_result.stdout.lower():
             aeb_images.append(image_path)
             # Extract exposure time
-            exposure_cmd = f'exiftool -ExposureTime -b "{image_path}"'
-            exposure_result = subprocess.run(exposure_cmd, shell=True, stdout=subprocess.PIPE, text=True)
+            exposure_cmd = ["exiftool", "-ExposureTime", "-b", image_path]
+            try:
+                exposure_result = subprocess.run(
+                    exposure_cmd, check=True, stdout=subprocess.PIPE, text=True
+                )
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                print(
+                    f"Error running exiftool for {image_path}: {e}",
+                    file=sys.stderr,
+                )
+                aeb_images.pop()
+                continue
             exposure_time_str = exposure_result.stdout.strip()
             try:
                 # Attempt to parse the exposure time as a float directly
@@ -91,7 +121,10 @@ def load_images(image_paths):
     images = []
     for path in image_paths:
         img = cv2.imread(path)
-        images.append(img)
+        if img is not None:
+            images.append(img)
+        else:
+            print(f"Warning: could not read {path}", file=sys.stderr)
     return images
 
 def create_hdr(
