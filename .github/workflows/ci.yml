@@ -16,11 +16,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest
+          cd frontend && npm ci && cd ..
       - name: Run tests
-        run: pytest -q
+        run: |
+          npm --prefix frontend run build
+          pytest -q
 
