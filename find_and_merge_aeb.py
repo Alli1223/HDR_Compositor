@@ -68,38 +68,41 @@ def group_images_by_datetime(image_paths, threshold=timedelta(seconds=2)):
 
 
 def find_aeb_images_and_exposure_times_from_list(image_paths):
+    """Return the provided paths with their exposure times.
+
+    The previous implementation filtered out images unless they contained an
+    ``XPKeywords`` tag with the value ``AEB``. This caused unexpected failures
+    when users uploaded photos lacking that metadata. The web frontend already
+    groups related images, so here we simply read the exposure time for every
+    file in ``image_paths``.
+    """
+
     aeb_images = []
     exposure_times = []
+
     for image_path in image_paths:
-        # Check for 'aeb' in XP Keywords
-        keywords_cmd = f'exiftool -XPKeywords "{image_path}"'
-        keywords_result = subprocess.run(
-            keywords_cmd, shell=True, stdout=subprocess.PIPE, text=True
+        aeb_images.append(image_path)
+        exposure_cmd = f'exiftool -ExposureTime -b "{image_path}"'
+        exposure_result = subprocess.run(
+            exposure_cmd, shell=True, stdout=subprocess.PIPE, text=True
         )
-        if "aeb" in keywords_result.stdout.lower():
-            aeb_images.append(image_path)
-            # Extract exposure time
-            exposure_cmd = f'exiftool -ExposureTime -b "{image_path}"'
-            exposure_result = subprocess.run(
-                exposure_cmd, shell=True, stdout=subprocess.PIPE, text=True
-            )
-            exposure_time_str = exposure_result.stdout.strip()
+        exposure_time_str = exposure_result.stdout.strip()
+        try:
+            # Attempt to parse the exposure time as a float directly
+            exposure_time = float(exposure_time_str)
+        except ValueError:
             try:
-                # Attempt to parse the exposure time as a float directly
-                exposure_time = float(exposure_time_str)
+                # Handle fractional exposure time (e.g. "1/250")
+                numerator, denominator = exposure_time_str.split("/")
+                exposure_time = float(numerator) / float(denominator)
             except ValueError:
-                try:
-                    # Attempt to parse fractional exposure time (e.g., "1/250")
-                    numerator, denominator = exposure_time_str.split("/")
-                    exposure_time = float(numerator) / float(denominator)
-                except ValueError:
-                    # Handle images without a valid exposure time or where parsing fails
-                    print(
-                        f"Warning: Could not parse exposure time for image {os.path.basename(image_path)} with value '{exposure_time_str}'. Skipping this image."
-                    )
-                    aeb_images.pop()  # Remove the last image added since it has no valid exposure time
-                    continue  # Skip further processing for this image
-            exposure_times.append(exposure_time)
+                print(
+                    f"Warning: Could not parse exposure time for image {os.path.basename(image_path)} with value '{exposure_time_str}'. Skipping this image."
+                )
+                aeb_images.pop()
+                continue
+        exposure_times.append(exposure_time)
+
     return aeb_images, exposure_times
 
 

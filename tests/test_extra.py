@@ -35,18 +35,14 @@ def test_find_aeb_images_and_exposure_times(monkeypatch):
         class R:
             def __init__(self, out):
                 self.stdout = out
-        if 'XPKeywords' in cmd:
-            if 'img1.jpg' in cmd:
-                return R('AEB')
-            return R('')
         if 'ExposureTime' in cmd:
             return R('1/60')
         return R('')
 
     monkeypatch.setattr(subprocess, 'run', fake_run)
     images, times = find_aeb_images_and_exposure_times_from_list(['img1.jpg', 'img2.jpg'])
-    assert images == ['img1.jpg']
-    assert times == [1/60]
+    assert images == ['img1.jpg', 'img2.jpg']
+    assert times == [1/60, 1/60]
     # Ensure subprocess.run was called for each image
-    assert any('XPKeywords "img1.jpg"' in c for c in calls)
+    assert len([c for c in calls if 'ExposureTime' in c]) == 2
 
