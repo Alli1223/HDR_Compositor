@@ -3,7 +3,9 @@ import numpy as np
 from typing import List, Sequence, Optional
 
 
-def get_medium_exposure_image(images: Sequence[np.ndarray], exposure_times: Sequence[float]) -> Optional[np.ndarray]:
+def get_medium_exposure_image(
+    images: Sequence[np.ndarray], exposure_times: Sequence[float]
+) -> Optional[np.ndarray]:
     """Return the image with the median exposure time."""
     if not images or not exposure_times:
         return None
@@ -12,7 +14,9 @@ def get_medium_exposure_image(images: Sequence[np.ndarray], exposure_times: Sequ
     return sorted_images[len(sorted_images) // 2]
 
 
-def enhance_image(img: np.ndarray, reference: Optional[np.ndarray] = None) -> np.ndarray:
+def enhance_image(
+    img: np.ndarray, reference: Optional[np.ndarray] = None
+) -> np.ndarray:
     """Apply simple color and contrast enhancements."""
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV).astype(np.float32)
     hsv[..., 1] = np.clip(hsv[..., 1] * 1.3, 0, 255)
@@ -26,7 +30,9 @@ def enhance_image(img: np.ndarray, reference: Optional[np.ndarray] = None) -> np
 
     if reference is not None:
         ref = cv2.resize(reference, (img.shape[1], img.shape[0]))
-        img = cv2.addWeighted(img.astype(np.float32), 0.7, ref.astype(np.float32), 0.3, 0)
+        img = cv2.addWeighted(
+            img.astype(np.float32), 0.7, ref.astype(np.float32), 0.3, 0
+        )
         img = img.astype(np.uint8)
     return img
 
@@ -91,17 +97,22 @@ def align_images(images: List[np.ndarray]) -> List[np.ndarray]:
 
 
 def remove_ghosts(images: List[np.ndarray], threshold: int = 25) -> List[np.ndarray]:
-    """Replace pixels that deviate from the median with the reference image."""
+    """Replace pixels that deviate from the median with the reference image.
+
+    This version uses vectorised numpy operations for improved performance
+    when processing many images."""
     if not images:
         return images
+
     stack = np.stack(images).astype(np.float32)
     median = np.median(stack, axis=0)
-    reference = images[0]
-    result = []
-    for img in images:
-        diff = np.abs(img.astype(np.float32) - median).sum(axis=2)
-        mask = diff > threshold
-        deghosted = img.copy()
-        deghosted[mask] = reference[mask]
-        result.append(deghosted)
-    return result
+    reference = stack[0]
+
+    # Compute absolute deviation for the whole stack in one operation
+    diff = np.abs(stack - median).sum(axis=3)
+    mask = diff > threshold
+
+    # Replace deviating pixels with the reference image for all frames
+    stack = np.where(mask[..., None], reference, stack)
+
+    return [frame.astype(np.uint8) for frame in stack]
