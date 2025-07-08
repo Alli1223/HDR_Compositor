@@ -4,6 +4,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { spawn } from 'child_process';
 import { TextEncoder } from 'util';
+import { randomUUID } from 'crypto';
 
 export async function POST(req: Request) {
   const formData = await req.formData();
@@ -24,6 +25,15 @@ export async function POST(req: Request) {
     paths.push(filePath);
   }
   const outputPath = join(dir, 'result.jpg');
+  // Final images will be moved to the public downloads directory so they can
+  // be retrieved later via a normal HTTP request.
+  // Use the Next.js public directory so files can be served statically. Since
+  // this API route executes within the `frontend` directory we don't prefix
+  // the path with another `frontend` segment.
+  const downloadsDir = join(process.cwd(), 'public', 'downloads');
+  await fs.mkdir(downloadsDir, { recursive: true });
+  const fileId = `${randomUUID()}.jpg`;
+  const finalDownloadPath = join(downloadsDir, fileId);
   const script = join(process.cwd(), '..', 'process_uploads.py');
   const args: string[] = [];
   if (autoAlign) args.push('--align');
@@ -62,8 +72,15 @@ export async function POST(req: Request) {
 
     child.on('close', async () => {
       try {
-        const data = await fs.readFile(finalPath || outputPath);
-        send('done', data.toString('base64'));
+        const src = finalPath || outputPath;
+        // Copy the file instead of renaming to avoid issues when the temporary
+        // directory lives on a different filesystem than the downloads folder.
+        await fs.copyFile(src, finalDownloadPath);
+        await fs.unlink(src);
+        const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+        send('done', `${basePath}/api/downloads/${fileId}`);
+      } catch (err: any) {
+        send('error', String(err));
       } finally {
         writer.close();
       }

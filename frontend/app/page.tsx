@@ -12,6 +12,11 @@ import ListItemText from "@mui/material/ListItemText";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 
+// Prefix API requests and returned download URLs when the application is served
+// behind a reverse proxy. The value is injected at build time via the
+// NEXT_PUBLIC_BASE_PATH environment variable and defaults to an empty string.
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 type Settings = {
   autoAlign: boolean;
   antiGhost: boolean;
@@ -43,7 +48,11 @@ export default function Home() {
 
   const resetURLs = (gs: Group[]) => {
     gs.forEach((g) => {
-      g.results.forEach((r) => URL.revokeObjectURL(r.url));
+      g.results.forEach((r) => {
+        if (r.url.startsWith("blob:")) {
+          URL.revokeObjectURL(r.url);
+        }
+      });
     });
   };
 
@@ -159,7 +168,10 @@ export default function Home() {
       formData.append("saturation", (2 - saturation).toString());
       setLoading(true);
       try {
-        const res = await fetch("/api/process", { method: "POST", body: formData });
+        const res = await fetch(`${basePath}/api/process`, {
+          method: "POST",
+          body: formData,
+        });
         if (!res.ok || !res.body) throw new Error("request failed");
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -192,13 +204,8 @@ export default function Home() {
                   return copy;
                 });
               } else if (currentEvent === "done") {
-                const byteString = atob(valueStr);
-                const bytes = new Uint8Array(byteString.length);
-                for (let i = 0; i < byteString.length; i++) {
-                  bytes[i] = byteString.charCodeAt(i);
-                }
-                const blob = new Blob([bytes], { type: "image/jpeg" });
-                resultUrl = URL.createObjectURL(blob);
+                // Server returns a relative download URL
+                resultUrl = valueStr;
               }
             }
           }
