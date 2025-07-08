@@ -25,8 +25,8 @@ class HDRGui:
         self.ldr_image = None
         self.ref_image = None
 
-        with dpg.window(label="AEB Compositor", tag="main_window", width=820, height=620):
-            dpg.add_text("HDR Compositor", tag="title_text")
+        with dpg.window(label="AEB -> HDR Compositor", tag="main_window", width=820, height=620):
+            dpg.add_text("AEB -> HDR Compositor", tag="title_text")
             dpg.add_separator()
             with dpg.group(horizontal=True):
                 with dpg.child_window(width=260, border=False):
@@ -142,7 +142,7 @@ def main():
         dpg.add_file_extension(".png", color=(255, 255, 255, 255))
         dpg.add_file_extension(".tif", color=(255, 255, 255, 255))
         dpg.add_file_extension(".tiff", color=(255, 255, 255, 255))
-    dpg.create_viewport(title="AEB Compositor", width=820, height=620)
+    dpg.create_viewport(title="AEB -> HDR Compositor", width=820, height=620)
     dpg.setup_dearpygui()
     dpg.show_viewport()
     dpg.set_primary_window("main_window", True)
