@@ -22,6 +22,7 @@ type Settings = {
   antiGhost: boolean;
   contrast: number;
   saturation: number;
+  algorithm: "mantiuk" | "reinhard" | "drago";
 };
 
 type Result = { url: string; settings: Settings };
@@ -44,6 +45,7 @@ export default function Home() {
   const [thumbLoading, setThumbLoading] = useState(false);
   const [thumbProgress, setThumbProgress] = useState(0);
   const [fullscreenUrl, setFullscreenUrl] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState<Record<number, boolean>>({});
   const processingRef = useRef(false);
 
   const resetURLs = (gs: Group[]) => {
@@ -77,7 +79,13 @@ export default function Home() {
           urls: [],
           files: [],
           results: [],
-          settings: { autoAlign: false, antiGhost: false, contrast: 1, saturation: 1 },
+          settings: {
+            autoAlign: false,
+            antiGhost: false,
+            contrast: 1,
+            saturation: 1,
+            algorithm: "mantiuk",
+          },
           status: "idle",
           progress: 0,
         };
@@ -159,13 +167,14 @@ export default function Home() {
     });
     const run = async () => {
       const g = groups[index];
-      const { autoAlign, antiGhost, contrast, saturation } = g.settings;
+      const { autoAlign, antiGhost, contrast, saturation, algorithm } = g.settings;
       const formData = new FormData();
       g.files.forEach((f) => formData.append("images", f));
       formData.append("autoAlign", autoAlign ? "1" : "0");
       formData.append("antiGhost", antiGhost ? "1" : "0");
       formData.append("contrast", (2 - contrast).toString());
       formData.append("saturation", (2 - saturation).toString());
+      formData.append("algorithm", algorithm);
       setLoading(true);
       try {
         const res = await fetch(`${basePath}/api/process`, {
@@ -311,6 +320,29 @@ export default function Home() {
             }
           />
         </div>
+        <div>
+          <label className="block text-sm mb-1">Tone Mapping</label>
+          <div className="flex gap-2" role="radiogroup">
+            {(["mantiuk", "reinhard", "drago"] as const).map((opt) => (
+              <label key={opt} className="flex items-center gap-1 text-sm">
+                <input
+                  type="radio"
+                  name={`algorithm-${index}`}
+                  value={opt}
+                  checked={s.algorithm === opt}
+                  onChange={() =>
+                    setGroups((gs) => {
+                      const copy = [...gs];
+                      copy[index].settings.algorithm = opt;
+                      return copy;
+                    })
+                  }
+                />
+                {opt}
+              </label>
+            ))}
+          </div>
+        </div>
       </Paper>
     );
   };
@@ -398,24 +430,18 @@ export default function Home() {
                 ))}
               </div>
               <div className="mt-auto pt-2 border-t border-gray-300 flex items-start justify-between gap-2">
-                <details>
-                  <summary>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        const details = e.currentTarget.closest("details");
-                        if (details) {
-                          details.open = !details.open;
-                        }
-                      }}
-                    >
-                      Settings
-                    </Button>
-                  </summary>
-                  {renderSettings(0)}
-                </details>
+                <div>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() =>
+                      setSettingsOpen((o) => ({ ...o, 0: !o[0] }))
+                    }
+                  >
+                    Settings
+                  </Button>
+                  {settingsOpen[0] && renderSettings(0)}
+                </div>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="contained"
@@ -503,24 +529,18 @@ export default function Home() {
                 )}
               </div>
               <div className="mt-auto pt-2 border-t border-gray-300 flex items-start justify-between gap-2">
-                <details>
-                  <summary>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        const details = e.currentTarget.closest("details");
-                        if (details) {
-                          details.open = !details.open;
-                        }
-                      }}
-                    >
-                      Settings
-                    </Button>
-                  </summary>
-                  {renderSettings(idx)}
-                </details>
+                <div>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() =>
+                      setSettingsOpen((o) => ({ ...o, [idx]: !o[idx] }))
+                    }
+                  >
+                    Settings
+                  </Button>
+                  {settingsOpen[idx] && renderSettings(idx)}
+                </div>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="contained"

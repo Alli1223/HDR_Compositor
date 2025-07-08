@@ -38,6 +38,7 @@ export async function POST(req: Request) {
   const antiGhost = formData.get('antiGhost') === '1';
   const contrast = formData.get('contrast');
   const saturation = formData.get('saturation');
+  const algorithm = formData.get('algorithm');
   const dir = await fs.mkdtemp(join(tmpdir(), 'hdr-'));
   const paths: string[] = [];
   for (const file of files) {
@@ -63,6 +64,7 @@ export async function POST(req: Request) {
   if (antiGhost) args.push('--deghost');
   if (contrast) args.push('--contrast', String(contrast));
   if (saturation) args.push('--saturation', String(saturation));
+  if (algorithm) args.push('--algorithm', String(algorithm));
 
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
