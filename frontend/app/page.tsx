@@ -11,6 +11,10 @@ import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ErrorIcon from "@mui/icons-material/Error";
+import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
+import AutorenewIcon from "@mui/icons-material/Autorenew";
 
 // Prefix API requests and returned download URLs when the application is served
 // behind a reverse proxy. The value is injected at build time via the
@@ -47,6 +51,27 @@ export default function Home() {
   const [fullscreenUrl, setFullscreenUrl] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState<Record<number, boolean>>({});
   const processingRef = useRef(false);
+
+  const statusIcon = (status?: Group["status"]) => {
+    switch (status) {
+      case "queued":
+        return <HourglassEmptyIcon fontSize="small" color="action" />;
+      case "processing":
+        return (
+          <AutorenewIcon
+            fontSize="small"
+            color="primary"
+            className="animate-spin"
+          />
+        );
+      case "done":
+        return <CheckCircleIcon fontSize="small" color="success" />;
+      case "error":
+        return <ErrorIcon fontSize="small" color="error" />;
+      default:
+        return null;
+    }
+  };
 
   const resetURLs = (gs: Group[]) => {
     gs.forEach((g) => {
@@ -423,7 +448,10 @@ export default function Home() {
       {groups.length === 1 && (
         <div className="w-full max-w-2xl grid gap-4">
           <div className="grid md:grid-cols-2 gap-4">
-            <Paper className="p-4 flex flex-col gap-4" elevation={3}>
+            <Paper className="relative p-4 flex flex-col gap-4" elevation={3}>
+              <div className="absolute top-2 right-2">
+                {statusIcon(groups[0].status)}
+              </div>
               <div className="grid grid-cols-3 gap-2">
                 {groups[0].urls.map((src) => (
                   <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
@@ -454,17 +482,12 @@ export default function Home() {
                       "Create HDR"
                     )}
                   </Button>
-                  {groups[0].status && groups[0].status !== "idle" && (
-                    <>
-                      <p className="text-sm">Status: {groups[0].status}</p>
-                      {groups[0].status === "processing" && (
-                        <LinearProgress
-                          sx={{ mt: 1 }}
-                          variant="determinate"
-                          value={groups[0].progress ?? 0}
-                        />
-                      )}
-                    </>
+                  {groups[0].status === "processing" && (
+                    <LinearProgress
+                      sx={{ mt: 1 }}
+                      variant="determinate"
+                      value={groups[0].progress ?? 0}
+                    />
                   )}
                 </div>
               </div>
@@ -500,7 +523,8 @@ export default function Home() {
       {groups.length > 1 && (
         <div className="w-full max-w-3xl grid gap-4 md:grid-cols-2">
           {groups.map((g, idx) => (
-            <Paper key={idx} variant="outlined" className="p-4 flex flex-col gap-4">
+            <Paper key={idx} variant="outlined" className="relative p-4 flex flex-col gap-4">
+              <div className="absolute top-2 right-2">{statusIcon(g.status)}</div>
               <h3 className="text-sm font-semibold mb-2">Group {idx + 1}</h3>
               <div className="grid md:grid-cols-2 gap-4 flex-grow">
                 <div className="grid gap-4">
@@ -554,17 +578,12 @@ export default function Home() {
                       "Create HDR"
                     )}
                   </Button>
-                  {g.status && g.status !== "idle" && (
-                    <>
-                      <p className="text-xs">Status: {g.status}</p>
-                      {g.status === "processing" && (
-                        <LinearProgress
-                          sx={{ mt: 1 }}
-                          variant="determinate"
-                          value={g.progress ?? 0}
-                        />
-                      )}
-                    </>
+                  {g.status === "processing" && (
+                    <LinearProgress
+                      sx={{ mt: 1 }}
+                      variant="determinate"
+                      value={g.progress ?? 0}
+                    />
                   )}
                 </div>
               </div>
