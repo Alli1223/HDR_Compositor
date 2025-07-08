@@ -3,7 +3,7 @@ import "./globals.css";
 import ClientThemeProvider from "../components/ClientThemeProvider";
 
 export const metadata: Metadata = {
-  title: "AEB -> HDR Compositor",
+  title: "AEB ➡️ HDR Compositor",
   description: "Web interface for HDR processing",
 };
 
