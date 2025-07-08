@@ -44,7 +44,7 @@ export default function Home() {
   const [queue, setQueue] = useState<number[]>([]);
   const [thumbLoading, setThumbLoading] = useState(false);
   const [thumbProgress, setThumbProgress] = useState(0);
-  const [fullscreenUrl, setFullscreenUrl] = useState<string | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState<Record<number, boolean>>({});
   const processingRef = useRef(false);
 
@@ -348,6 +348,29 @@ export default function Home() {
   };
 
   const allResults = groups.flatMap((g) => g.results);
+  const currentUrl =
+    selectedIndex !== null ? allResults[selectedIndex]?.url ?? null : null;
+
+  useEffect(() => {
+    if (selectedIndex === null) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setSelectedIndex((i) =>
+          i === null ? null : (i - 1 + allResults.length) % allResults.length
+        );
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setSelectedIndex((i) =>
+          i === null ? null : (i + 1) % allResults.length
+        );
+      } else if (e.key === "Escape") {
+        setSelectedIndex(null);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selectedIndex, allResults.length]);
 
   return (
     <main className="flex flex-col items-center p-4 gap-4 pb-32">
@@ -477,7 +500,7 @@ export default function Home() {
                     <img
                       src={r.url}
                       className="w-48 h-48 object-cover rounded-lg cursor-pointer"
-                      onClick={() => setFullscreenUrl(r.url)}
+                      onClick={() => setSelectedIndex(allResults.indexOf(r))}
                     />
                     <a href={r.url} download={`hdr_result_${i + 1}.jpg`}>
                       <Button variant="outlined" color="secondary" size="small">Download</Button>
@@ -518,7 +541,7 @@ export default function Home() {
                         <img
                           src={r.url}
                           className="w-48 h-48 object-cover rounded-lg cursor-pointer"
-                          onClick={() => setFullscreenUrl(r.url)}
+                          onClick={() => setSelectedIndex(allResults.indexOf(r))}
                         />
                         <a href={r.url} download={`hdr_group_${idx + 1}_${j + 1}.jpg`}>
                           <Button size="small" variant="outlined" color="secondary">Download</Button>
@@ -591,7 +614,7 @@ export default function Home() {
                 key={i}
                 src={r.url}
                 className="h-24 w-24 object-cover rounded-lg cursor-pointer"
-                onClick={() => setFullscreenUrl(r.url)}
+                onClick={() => setSelectedIndex(i)}
               />
             ))}
           </div>
@@ -599,12 +622,12 @@ export default function Home() {
       )}
 
       {loading && <CircularProgress />}
-      {fullscreenUrl && (
+      {currentUrl && (
         <div
           className="fixed inset-0 bg-gray-200 bg-opacity-80 flex items-center justify-center z-50"
-          onClick={() => setFullscreenUrl(null)}
+          onClick={() => setSelectedIndex(null)}
         >
-          <img src={fullscreenUrl} className="max-w-full max-h-full" />
+          <img src={currentUrl} className="max-w-full max-h-full" />
         </div>
       )}
       <p className="text-xs text-gray-600 mt-4">
