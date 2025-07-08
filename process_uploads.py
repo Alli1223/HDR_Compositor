@@ -40,33 +40,41 @@ def main():
         sys.exit(1)
 
     *image_paths, output_path = args.paths
-    aeb_images, exposure_times = find_aeb_images_and_exposure_times_from_list(image_paths)
-    if not aeb_images:
-        print("No AEB-tagged images found", file=sys.stderr)
-        sys.exit(1)
+    try:
+        aeb_images, exposure_times = find_aeb_images_and_exposure_times_from_list(image_paths)
+        if not aeb_images:
+            print("No AEB-tagged images found", file=sys.stderr)
+            return 1
 
-    def progress(pct: int):
-        print(f"PROGRESS {pct}", flush=True)
+        def progress(pct: int):
+            print(f"PROGRESS {pct}", flush=True)
 
-    progress(10)
-    images = load_images(aeb_images)
-    progress(40)
-    hdr = create_hdr(images, exposure_times, align=args.align, deghost=args.deghost)
-    progress(70)
-    ref_image = get_medium_exposure_image(images, exposure_times)
-    ldr = tonemap(
-        hdr,
-        ref_image,
-        algorithm=args.algorithm,
-        saturation=args.saturation,
-        contrast=args.contrast,
-        gamma=args.gamma,
-        brightness=args.brightness,
-    )
-    progress(90)
-    cv2.imwrite(output_path, ldr)
-    progress(100)
-    print(output_path)
+        progress(10)
+        images = load_images(aeb_images)
+        progress(40)
+        hdr = create_hdr(images, exposure_times, align=args.align, deghost=args.deghost)
+        progress(70)
+        ref_image = get_medium_exposure_image(images, exposure_times)
+        ldr = tonemap(
+            hdr,
+            ref_image,
+            algorithm=args.algorithm,
+            saturation=args.saturation,
+            contrast=args.contrast,
+            gamma=args.gamma,
+            brightness=args.brightness,
+        )
+        progress(90)
+        cv2.imwrite(output_path, ldr)
+        progress(100)
+        print(output_path)
+        return 0
+    except Exception as e:  # pragma: no cover - handle unexpected errors
+        import traceback
+
+        print("Unhandled exception:", file=sys.stderr)
+        traceback.print_exc()
+        return 1
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

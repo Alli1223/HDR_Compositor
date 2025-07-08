@@ -69,8 +69,18 @@ export async function POST(req: Request) {
       send('error', d.toString());
     });
 
-    child.on('close', async (code) => {
-      console.log('Process exited with code', code);
+    child.on('error', (err) => {
+      console.error('Failed to start process:', err);
+      send('error', `spawn error: ${err.message}`);
+    });
+
+    child.on('close', async (code, signal) => {
+      console.log('Process exited with code', code, 'signal', signal);
+      if (signal) {
+        send('error', `Process terminated by signal ${signal}`);
+        writer.close();
+        return;
+      }
       const target = finalPath || outputPath;
       try {
         await fs.access(target);
