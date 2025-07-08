@@ -40,11 +40,19 @@ export async function POST(req: Request) {
   };
 
   try {
+    console.log('Spawning HDR process');
+    console.log('Script:', script);
+    console.log('Args:', args);
+    console.log('Input paths:', paths);
+    console.log('Output path:', outputPath);
     const child = spawn('python3', [script, ...args, ...paths, outputPath]);
     let finalPath = '';
 
+    console.log('PID:', child.pid);
+
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', (chunk: string) => {
+      console.log('stdout:', chunk);
       chunk.split(/\r?\n/).forEach((line) => {
         if (!line) return;
         if (line.startsWith('PROGRESS')) {
@@ -57,10 +65,12 @@ export async function POST(req: Request) {
     });
 
     child.stderr.on('data', (d) => {
+      console.error('stderr:', d.toString());
       send('error', d.toString());
     });
 
-    child.on('close', async () => {
+    child.on('close', async (code) => {
+      console.log('Process exited with code', code);
       const target = finalPath || outputPath;
       try {
         await fs.access(target);

@@ -159,7 +159,9 @@ export default function Home() {
       formData.append("saturation", (2 - saturation).toString());
       setLoading(true);
       try {
+        console.log('Sending HDR request for group', index);
         const res = await fetch("/api/process", { method: "POST", body: formData });
+        console.log('Response status', res.status);
         if (!res.ok || !res.body) throw new Error("request failed");
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -185,6 +187,7 @@ export default function Home() {
               currentEvent = valueStr;
             } else if (field === "data") {
               if (currentEvent === "progress") {
+                console.log('Progress', valueStr);
                 const pct = parseInt(valueStr, 10);
                 setGroups((gs) => {
                   const copy = [...gs];
@@ -199,6 +202,7 @@ export default function Home() {
                 }
                 const blob = new Blob([bytes], { type: "image/jpeg" });
                 resultUrl = URL.createObjectURL(blob);
+                console.log('HDR result ready');
               }
             }
           }
@@ -213,6 +217,7 @@ export default function Home() {
             return copy;
           });
         } else {
+          console.warn('No result received for group', index);
           setGroups((gs) => {
             const copy = [...gs];
             copy[index].status = "error";
@@ -220,6 +225,7 @@ export default function Home() {
           });
         }
       } catch (e) {
+        console.error('HDR request failed', e);
         setGroups((gs) => {
           const copy = [...gs];
           copy[index].status = "error";
