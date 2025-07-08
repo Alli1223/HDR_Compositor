@@ -403,8 +403,16 @@ export default function Home() {
                   {renderSettings(0)}
                 </details>
                 <div className="flex items-center gap-2">
-                  <Button variant="contained" onClick={() => enqueueHDR(0)}>
-                    Create HDR
+                  <Button
+                    variant="contained"
+                    onClick={() => enqueueHDR(0)}
+                    disabled={groups[0].status === "processing"}
+                  >
+                    {groups[0].status === "processing" ? (
+                      <CircularProgress size={24} color="inherit" />
+                    ) : (
+                      "Create HDR"
+                    )}
                   </Button>
                   {groups[0].status && groups[0].status !== "idle" && (
                     <>
@@ -488,8 +496,17 @@ export default function Home() {
                   {renderSettings(idx)}
                 </details>
                 <div className="flex items-center gap-2">
-                  <Button variant="contained" size="small" onClick={() => enqueueHDR(idx)}>
-                    Create HDR
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => enqueueHDR(idx)}
+                    disabled={g.status === "processing"}
+                  >
+                    {g.status === "processing" ? (
+                      <CircularProgress size={24} color="inherit" />
+                    ) : (
+                      "Create HDR"
+                    )}
                   </Button>
                   {g.status && g.status !== "idle" && (
                     <>
