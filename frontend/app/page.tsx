@@ -555,13 +555,6 @@ export default function Home() {
               </div>
             )}
           </div>
-          {groups[0].results.length > 0 && (
-            <div className="flex justify-end">
-              <Button variant="outlined" color="secondary" onClick={handleDownloadAll}>
-                Download All
-              </Button>
-            </div>
-          )}
         </div>
       )}
 
@@ -637,22 +630,12 @@ export default function Home() {
               </div>
             </Paper>
           ))}
-          <div className="flex justify-end gap-2 md:col-span-2">
-            <Button variant="contained" onClick={handleCreateAll}>
-              Create All
-            </Button>
-            {groups.some((g) => g.results.length > 0) && (
-              <Button variant="outlined" color="secondary" onClick={handleDownloadAll}>
-                Download All
-              </Button>
-            )}
-          </div>
         </div>
       )}
 
-      {allResults.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-20 bg-white/90 dark:bg-gray-900/90 backdrop-blur p-2 overflow-x-auto">
-          <div className="flex gap-2">
+      {groups.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-20 bg-white/90 dark:bg-gray-900/90 backdrop-blur p-2 flex items-center">
+          <div className="flex gap-2 justify-center flex-grow overflow-x-auto">
             {allResults.map((r, i) => (
               <img
                 key={i}
@@ -661,6 +644,16 @@ export default function Home() {
                 onClick={() => setSelectedIndex(i)}
               />
             ))}
+          </div>
+          <div className="flex gap-2 ml-auto">
+            <Button variant="contained" onClick={handleCreateAll}>
+              Create All
+            </Button>
+            {groups.some((g) => g.results.length > 0) && (
+              <Button variant="outlined" color="secondary" onClick={handleDownloadAll}>
+                Download All
+              </Button>
+            )}
           </div>
         </div>
       )}
