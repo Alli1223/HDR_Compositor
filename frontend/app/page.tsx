@@ -389,14 +389,14 @@ export default function Home() {
       {groups.length === 1 && (
         <div className="w-full max-w-2xl grid gap-4">
           <div className="grid md:grid-cols-2 gap-4">
-            <Paper className="p-4 grid gap-4" elevation={3}>
+            <Paper className="p-4 flex flex-col gap-4" elevation={3}>
               <div className="grid grid-cols-3 gap-2">
                 {groups[0].urls.map((src) => (
                   <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
                 ))}
               </div>
               {renderSettings(0)}
-              <div className="flex items-center gap-2">
+              <div className="mt-auto pt-2 border-t flex items-center gap-2">
                 <Button variant="contained" onClick={() => enqueueHDR(0)}>
                   Create HDR
                 </Button>
@@ -445,9 +445,9 @@ export default function Home() {
       {groups.length > 1 && (
         <div className="w-full max-w-3xl grid gap-4 md:grid-cols-2">
           {groups.map((g, idx) => (
-            <Paper key={idx} variant="outlined" className="p-4 grid gap-4">
+            <Paper key={idx} variant="outlined" className="p-4 flex flex-col gap-4">
               <h3 className="text-sm font-semibold mb-2">Group {idx + 1}</h3>
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-2 gap-4 flex-grow">
                 <div className="grid gap-4">
                   <div className="grid grid-cols-3 gap-2">
                     {g.urls.map((src) => (
@@ -460,23 +460,6 @@ export default function Home() {
                     </summary>
                     {renderSettings(idx)}
                   </details>
-                  <div className="flex items-center gap-2">
-                    <Button variant="contained" size="small" onClick={() => enqueueHDR(idx)}>
-                      Create HDR
-                    </Button>
-                    {g.status && g.status !== "idle" && (
-                      <>
-                        <p className="text-xs">Status: {g.status}</p>
-                        {g.status === "processing" && (
-                          <LinearProgress
-                            sx={{ mt: 1 }}
-                            variant="determinate"
-                            value={g.progress ?? 0}
-                          />
-                        )}
-                      </>
-                    )}
-                  </div>
                 </div>
                 {g.results.length > 0 && (
                   <div className="flex flex-col gap-2">
@@ -494,6 +477,23 @@ export default function Home() {
                       </Paper>
                     ))}
                   </div>
+                )}
+              </div>
+              <div className="mt-auto pt-2 border-t flex items-center gap-2">
+                <Button variant="contained" size="small" onClick={() => enqueueHDR(idx)}>
+                  Create HDR
+                </Button>
+                {g.status && g.status !== "idle" && (
+                  <>
+                    <p className="text-xs">Status: {g.status}</p>
+                    {g.status === "processing" && (
+                      <LinearProgress
+                        sx={{ mt: 1 }}
+                        variant="determinate"
+                        value={g.progress ?? 0}
+                      />
+                    )}
+                  </>
                 )}
               </div>
             </Paper>
