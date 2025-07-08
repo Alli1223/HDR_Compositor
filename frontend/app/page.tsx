@@ -15,6 +15,8 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import AutorenewIcon from "@mui/icons-material/Autorenew";
+import DeleteIcon from "@mui/icons-material/Delete";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 
 // Prefix API requests and returned download URLs when the application is served
 // behind a reverse proxy. The value is injected at build time via the
@@ -178,6 +180,59 @@ export default function Home() {
             : `hdr_batch_${idx + 1}_${j + 1}.jpg`;
         triggerDownload(r.url, name);
       });
+    });
+  };
+
+  const handleAddImages = async (index: number, files: FileList | null) => {
+    if (!files) return;
+    const arr = Array.from(files);
+    for (const file of arr) {
+      const url = await createThumbnail(file);
+      setGroups((gs) => {
+        const copy = [...gs];
+        copy[index].urls.push(url);
+        copy[index].files.push(file);
+        return copy;
+      });
+    }
+  };
+
+  const handleReplaceImage = async (
+    groupIndex: number,
+    imgIndex: number,
+    file: File
+  ) => {
+    const url = await createThumbnail(file);
+    setGroups((gs) => {
+      const copy = [...gs];
+      copy[groupIndex].urls[imgIndex] = url;
+      copy[groupIndex].files[imgIndex] = file;
+      return copy;
+    });
+  };
+
+  const handleRemoveImage = (groupIndex: number, imgIndex: number) => {
+    setGroups((gs) => {
+      const copy = [...gs];
+      const g = copy[groupIndex];
+      g.urls.splice(imgIndex, 1);
+      g.files.splice(imgIndex, 1);
+      if (g.urls.length === 0) {
+        copy.splice(groupIndex, 1);
+      }
+      return copy;
+    });
+  };
+
+  const assignUnmatched = (fromIndex: number, toIndex: number) => {
+    setGroups((gs) => {
+      const copy = [...gs];
+      const item = copy[fromIndex];
+      if (!item || !copy[toIndex]) return copy;
+      copy[toIndex].urls.push(item.urls[0]);
+      copy[toIndex].files.push(item.files[0]);
+      copy.splice(fromIndex, 1);
+      return copy;
     });
   };
 
@@ -394,6 +449,12 @@ export default function Home() {
   const allResults = groups.flatMap((g) => g.results);
   const currentUrl =
     selectedIndex !== null ? allResults[selectedIndex]?.url ?? null : null;
+  const matched = groups
+    .map((g, idx) => ({ g, idx }))
+    .filter(({ g }) => g.urls.length > 1);
+  const unmatched = groups
+    .map((g, idx) => ({ g, idx }))
+    .filter(({ g }) => g.urls.length === 1);
 
   useEffect(() => {
     if (selectedIndex === null) return;
@@ -487,17 +548,46 @@ export default function Home() {
         </Paper>
       )}
 
-      {groups.length === 1 && (
+      {matched.length === 1 && (
         <div className="w-full max-w-2xl grid gap-4">
           <div className="grid md:grid-cols-2 gap-4">
             <Paper className="relative p-4 flex flex-col gap-4" elevation={3}>
               <div className="absolute top-2 right-2">
-                {statusIcon(groups[0].status)}
+                {statusIcon(matched[0].g.status)}
               </div>
               <div className="grid grid-cols-3 gap-2">
-                {groups[0].urls.map((src) => (
-                  <img key={src} src={src} className="w-16 h-16 object-cover rounded-lg" />
+                {matched[0].g.urls.map((src, i) => (
+                  <div key={src} className="relative group">
+                    <img src={src} className="w-16 h-16 object-cover rounded-lg" />
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                      <label className="cursor-pointer text-white">
+                        <SwapHorizIcon fontSize="small" />
+                        <input
+                          type="file"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleReplaceImage(matched[0].idx, i, f);
+                          }}
+                        />
+                      </label>
+                      <button onClick={() => handleRemoveImage(matched[0].idx, i)} className="text-white">
+                        <DeleteIcon fontSize="small" />
+                      </button>
+                    </div>
+                  </div>
                 ))}
+              </div>
+              <div>
+                <label className="text-sm text-blue-600 cursor-pointer">
+                  Add Images
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleAddImages(matched[0].idx, e.target.files)}
+                  />
+                </label>
               </div>
               <div className="mt-auto pt-2 border-t border-gray-300 flex items-start justify-between gap-2">
                 <div>
@@ -505,48 +595,48 @@ export default function Home() {
                     variant="outlined"
                     size="small"
                     onClick={() =>
-                      setSettingsOpen((o) => ({ ...o, 0: !o[0] }))
+                      setSettingsOpen((o) => ({ ...o, [matched[0].idx]: !o[matched[0].idx] }))
                     }
                   >
                     Settings
                   </Button>
-                  {settingsOpen[0] && renderSettings(0)}
+                  {settingsOpen[matched[0].idx] && renderSettings(matched[0].idx)}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="contained"
-                    onClick={() => enqueueHDR(0)}
-                    disabled={groups[0].status === "processing"}
+                    onClick={() => enqueueHDR(matched[0].idx)}
+                    disabled={matched[0].g.status === "processing"}
                   >
-                    {groups[0].status === "processing" ? (
+                    {matched[0].g.status === "processing" ? (
                       <CircularProgress size={24} color="inherit" />
                     ) : (
                       "Create HDR"
                     )}
                   </Button>
-                  {groups[0].status === "processing" && (
+                  {matched[0].g.status === "processing" && (
                     <LinearProgress
                       sx={{ mt: 1 }}
                       variant="determinate"
-                      value={groups[0].progress ?? 0}
+                      value={matched[0].g.progress ?? 0}
                     />
                   )}
                 </div>
               </div>
             </Paper>
-            {groups[0].results.length > 0 && (
+            {matched[0].g.results.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {(() => {
-                  const r = groups[0].results[groups[0].results.length - 1];
+                  const r = matched[0].g.results[matched[0].g.results.length - 1];
                   return r ? (
                     <Paper className="flex flex-col items-center gap-2 p-2" elevation={3}>
-                      <Typography variant="subtitle2">HDR Result {groups[0].results.length}</Typography>
+                      <Typography variant="subtitle2">HDR Result {matched[0].g.results.length}</Typography>
                       <img
                         src={r.url}
                         className="w-48 h-48 object-cover rounded-lg cursor-pointer"
                         onClick={() => setSelectedIndex(allResults.indexOf(r))}
                       />
-                      <a href={r.url} download={`hdr_result_${groups[0].results.length}.jpg`}>
+                      <a href={r.url} download={`hdr_result_${matched[0].g.results.length}.jpg`}>
                         <Button variant="outlined" color="secondary" size="small">Download</Button>
                       </a>
                     </Paper>
@@ -558,19 +648,48 @@ export default function Home() {
         </div>
       )}
 
-      {groups.length > 1 && (
+      {matched.length > 1 && (
         <div className="w-full max-w-3xl grid gap-4 md:grid-cols-2">
-          {groups.map((g, idx) => (
+          {matched.map(({ g, idx }) => (
             <Paper key={idx} variant="outlined" className="relative p-4 flex flex-col gap-4">
               <div className="absolute top-2 right-2">{statusIcon(g.status)}</div>
               <h3 className="text-sm font-semibold mb-2">Batch {idx + 1}</h3>
               <div className="grid md:grid-cols-2 gap-4 flex-grow">
                 <div className="grid gap-4">
                   <div className="grid grid-cols-3 gap-2">
-                    {g.urls.map((src) => (
-                      <img key={src} src={src} className="w-16 h-16 object-cover rounded-lg" />
+                    {g.urls.map((src, i) => (
+                      <div key={src} className="relative group">
+                        <img src={src} className="w-16 h-16 object-cover rounded-lg" />
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                          <label className="cursor-pointer text-white">
+                            <SwapHorizIcon fontSize="small" />
+                            <input
+                              type="file"
+                              className="hidden"
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) handleReplaceImage(idx, i, f);
+                              }}
+                            />
+                          </label>
+                          <button onClick={() => handleRemoveImage(idx, i)} className="text-white">
+                            <DeleteIcon fontSize="small" />
+                          </button>
+                        </div>
+                      </div>
                     ))}
                   </div>
+                </div>
+                <div>
+                  <label className="text-sm text-blue-600 cursor-pointer">
+                    Add Images
+                    <input
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => handleAddImages(idx, e.target.files)}
+                    />
+                  </label>
                 </div>
                 {g.results.length > 0 && (
                   <div className="flex flex-col gap-2">
@@ -631,6 +750,56 @@ export default function Home() {
             </Paper>
           ))}
         </div>
+      )}
+
+      {unmatched.length > 0 && (
+        <Paper variant="outlined" className="p-4 w-full max-w-xl">
+          <h3 className="text-sm font-semibold mb-2">Unmatched</h3>
+          <div className="grid grid-cols-3 gap-4">
+            {unmatched.map(({ g, idx }) => (
+              <div key={idx} className="flex flex-col items-center gap-1">
+                <div className="relative group">
+                  <img src={g.urls[0]} className="w-16 h-16 object-cover rounded-lg" />
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                    <label className="cursor-pointer text-white">
+                      <SwapHorizIcon fontSize="small" />
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleReplaceImage(idx, 0, f);
+                        }}
+                      />
+                    </label>
+                    <button onClick={() => handleRemoveImage(idx, 0)} className="text-white">
+                      <DeleteIcon fontSize="small" />
+                    </button>
+                  </div>
+                </div>
+                {matched.length > 0 && (
+                  <select
+                    className="text-sm border rounded"
+                    defaultValue=""
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      if (!isNaN(val)) assignUnmatched(idx, val);
+                    }}
+                  >
+                    <option value="" disabled>
+                      Move to...
+                    </option>
+                    {matched.map(({ idx: mi }) => (
+                      <option key={mi} value={mi}>
+                        Batch {mi + 1}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            ))}
+          </div>
+        </Paper>
       )}
 
       {groups.length > 0 && (
