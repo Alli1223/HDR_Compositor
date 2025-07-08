@@ -61,9 +61,13 @@ export async function POST(req: Request) {
     });
 
     child.on('close', async () => {
+      const target = finalPath || outputPath;
       try {
-        const data = await fs.readFile(finalPath || outputPath);
+        await fs.access(target);
+        const data = await fs.readFile(target);
         send('done', data.toString('base64'));
+      } catch {
+        send('error', `File not found: ${target}`);
       } finally {
         writer.close();
       }
