@@ -52,6 +52,7 @@ via `/api/downloads/<file>`. Files older than 1 day are automatically deleted
 from this directory.
 
 Open `http://localhost:3000` in your browser and use the **Import Images** button to select your AEB files. Imported files are hashed client-side so similar photos are grouped together. Each group shows a **Create HDR** button to merge that set, and there's also a **Create All** button to process every group at once.
+The settings panel now lets you choose the tone mapping algorithm via radio buttons, offering *Mantiuk*, *Reinhard* and *Drago* options.
 
 ### Docker
 
