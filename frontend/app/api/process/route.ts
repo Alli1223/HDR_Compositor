@@ -27,7 +27,10 @@ export async function POST(req: Request) {
   const outputPath = join(dir, 'result.jpg');
   // Final images will be moved to the public downloads directory so they can
   // be retrieved later via a normal HTTP request.
-  const downloadsDir = join(process.cwd(), 'frontend', 'public', 'downloads');
+  // Use the Next.js public directory so files can be served statically. Since
+  // this API route executes within the `frontend` directory we don't prefix
+  // the path with another `frontend` segment.
+  const downloadsDir = join(process.cwd(), 'public', 'downloads');
   await fs.mkdir(downloadsDir, { recursive: true });
   const fileId = `${randomUUID()}.jpg`;
   const finalDownloadPath = join(downloadsDir, fileId);
