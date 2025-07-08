@@ -43,11 +43,13 @@ type Group = {
 
 type Algo = "mantiuk" | "reinhard" | "drago";
 
+type QueueItem = { index: number; settings: Settings };
+
 export default function Home() {
   const [loading, setLoading] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
   const [dragging, setDragging] = useState(false);
-  const [queue, setQueue] = useState<{ index: number; algorithm?: Algo }[]>([]);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
   const [thumbLoading, setThumbLoading] = useState(false);
   const [thumbProgress, setThumbProgress] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -141,7 +143,11 @@ export default function Home() {
   };
 
   const enqueueHDR = (index: number, algorithm?: Algo) => {
-    setQueue((q) => [...q, { index, algorithm }]);
+    const settingsSnapshot = {
+      ...groups[index].settings,
+      ...(algorithm ? { algorithm } : {}),
+    };
+    setQueue((q) => [...q, { index, settings: settingsSnapshot }]);
     setGroups((gs) => {
       const copy = [...gs];
       if (copy[index].status !== "processing") {
@@ -185,7 +191,7 @@ export default function Home() {
 
   useEffect(() => {
     if (processingRef.current || queue.length === 0) return;
-    const { index, algorithm: algoOverride } = queue[0];
+    const { index, settings } = queue[0];
     processingRef.current = true;
     setGroups((gs) => {
       const copy = [...gs];
@@ -194,8 +200,7 @@ export default function Home() {
     });
     const run = async () => {
       const g = groups[index];
-      const { autoAlign, antiGhost, contrast, saturation } = g.settings;
-      const algorithm = algoOverride ?? g.settings.algorithm;
+      const { autoAlign, antiGhost, contrast, saturation, algorithm } = settings;
       const formData = new FormData();
       g.files.forEach((f) => formData.append("images", f));
       formData.append("autoAlign", autoAlign ? "1" : "0");
@@ -250,7 +255,7 @@ export default function Home() {
         if (resultUrl) {
           setGroups((gs) => {
             const copy = [...gs];
-            const settingsCopy = { ...copy[index].settings, algorithm };
+            const settingsCopy = { ...settings };
             copy[index].results.push({ url: resultUrl!, settings: settingsCopy });
             copy[index].status = "done";
             copy[index].progress = 100;
@@ -466,7 +471,7 @@ export default function Home() {
             {queue.map((item, i) => (
               <ListItem key={i} sx={{ display: "block" }}>
                 <ListItemText
-                  primary={`Group ${item.index + 1} (${item.algorithm ?? groups[item.index].settings.algorithm})`}
+                  primary={`Group ${item.index + 1} (${item.settings.algorithm})`}
                   secondary={groups[item.index].status}
                 />
                 {i === 0 && groups[item.index].status === "processing" && (
