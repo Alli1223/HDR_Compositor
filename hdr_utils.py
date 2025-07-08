@@ -74,7 +74,11 @@ def tonemap(
     ldr = np.clip(ldr * brightness, 0.0, 1.0)
     ldr = np.nan_to_num(ldr, nan=0.0, posinf=1.0, neginf=0.0)
     ldr_8bit = np.clip(ldr * 255, 0, 255).astype("uint8")
-    return enhance_image(ldr_8bit, reference_image)
+
+    enhanced = enhance_image(ldr_8bit, reference_image)
+    highlight_mask = ldr_8bit.max(axis=2) >= 250
+    enhanced[highlight_mask] = [255, 255, 255]
+    return enhanced
 
 
 def tonemap_mantiuk(
