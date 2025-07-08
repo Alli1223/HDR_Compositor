@@ -398,7 +398,19 @@ export default function Home() {
               <div className="mt-auto pt-2 border-t border-gray-300 flex items-start justify-between gap-2">
                 <details>
                   <summary>
-                    <Button variant="outlined" size="small">Settings</Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const details = e.currentTarget.closest("details");
+                        if (details) {
+                          details.open = !details.open;
+                        }
+                      }}
+                    >
+                      Settings
+                    </Button>
                   </summary>
                   {renderSettings(0)}
                 </details>
@@ -491,7 +503,19 @@ export default function Home() {
               <div className="mt-auto pt-2 border-t border-gray-300 flex items-start justify-between gap-2">
                 <details>
                   <summary>
-                    <Button variant="outlined" size="small">Settings</Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const details = e.currentTarget.closest("details");
+                        if (details) {
+                          details.open = !details.open;
+                        }
+                      }}
+                    >
+                      Settings
+                    </Button>
                   </summary>
                   {renderSettings(idx)}
                 </details>
