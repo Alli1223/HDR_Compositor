@@ -315,8 +315,10 @@ export default function Home() {
     );
   };
 
+  const allResults = groups.flatMap((g) => g.results);
+
   return (
-    <main className="flex flex-col items-center p-4 gap-4">
+    <main className="flex flex-col items-center p-4 gap-4 pb-32">
       <h1 className="text-3xl font-bold">
         AEB <span role="img" aria-label="arrow">➡️</span> HDR Compositor
       </h1>
@@ -557,6 +559,21 @@ export default function Home() {
                 Download All
               </Button>
             )}
+          </div>
+        </div>
+      )}
+
+      {allResults.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-20 bg-white/90 dark:bg-gray-900/90 backdrop-blur p-2 overflow-x-auto">
+          <div className="flex gap-2">
+            {allResults.map((r, i) => (
+              <img
+                key={i}
+                src={r.url}
+                className="h-24 w-24 object-cover rounded-lg cursor-pointer"
+                onClick={() => setFullscreenUrl(r.url)}
+              />
+            ))}
           </div>
         </div>
       )}
