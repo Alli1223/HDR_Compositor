@@ -25,9 +25,9 @@ def test_get_medium_exposure_image():
 
 
 def test_enhance_and_tonemap():
-    base = np.arange(16*3, dtype=np.uint8).reshape(4, 4, 3)
+    base = np.arange(16 * 3, dtype=np.uint8).reshape(4, 4, 3)
     images = [base, base + 20, base + 40]
-    times = [1/30, 1/60, 1/125]
+    times = [1 / 30, 1 / 60, 1 / 125]
     hdr = create_hdr(images, times)
     ldr = tonemap_mantiuk(hdr)
     assert ldr.dtype == np.uint8
@@ -63,7 +63,7 @@ def test_tonemap_preserves_highlights():
     hdr = create_hdr(images, times)
     ldr = tonemap_mantiuk(hdr)
     # Top-left pixel corresponds to the bright spot in all exposures
-    assert ldr[0, 0].mean() > 200
+    assert ldr[0, 0].mean() >= 250
 
 
 def test_tonemap_gamma_brightness():

@@ -71,6 +71,9 @@ def tonemap(
         raise ValueError(f"Unknown tonemapping algorithm: {algorithm}")
 
     ldr = tonemap_op.process(hdr_norm.copy())
+    ldr_max = float(ldr.max())
+    if ldr_max > 0 and ldr_max < 0.99:
+        ldr /= ldr_max
     ldr = np.clip(ldr * brightness, 0.0, 1.0)
     ldr = np.nan_to_num(ldr, nan=0.0, posinf=1.0, neginf=0.0)
     ldr_8bit = np.clip(ldr * 255, 0, 255).astype("uint8")
