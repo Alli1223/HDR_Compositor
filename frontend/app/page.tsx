@@ -31,6 +31,8 @@ type Settings = {
 
 type Result = { url: string; settings: Settings };
 
+type QueueItem = { index: number; settings: Settings };
+
 type Group = {
   hash: Hash;
   urls: string[];
@@ -45,7 +47,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
   const [dragging, setDragging] = useState(false);
-  const [queue, setQueue] = useState<number[]>([]);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
   const [thumbLoading, setThumbLoading] = useState(false);
   const [thumbProgress, setThumbProgress] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -141,10 +143,11 @@ export default function Home() {
   const enqueueHDR = (index: number) => {
     setGroups((gs) => {
       const copy = [...gs];
-      if (copy[index].status !== "processing" && copy[index].status !== "queued") {
+      const snapshot = { ...copy[index].settings };
+      setQueue((q) => [...q, { index, settings: snapshot }]);
+      if (copy[index].status !== "processing") {
         copy[index].status = "queued";
         copy[index].progress = 0;
-        setQueue((q) => [...q, index]);
       }
       return copy;
     });
@@ -183,7 +186,7 @@ export default function Home() {
 
   useEffect(() => {
     if (processingRef.current || queue.length === 0) return;
-    const index = queue[0];
+    const { index, settings } = queue[0];
     processingRef.current = true;
     setGroups((gs) => {
       const copy = [...gs];
@@ -192,7 +195,7 @@ export default function Home() {
     });
     const run = async () => {
       const g = groups[index];
-      const { autoAlign, antiGhost, contrast, saturation, algorithm } = g.settings;
+      const { autoAlign, antiGhost, contrast, saturation, algorithm } = settings;
       const formData = new FormData();
       g.files.forEach((f) => formData.append("images", f));
       formData.append("autoAlign", autoAlign ? "1" : "0");
@@ -201,6 +204,7 @@ export default function Home() {
       formData.append("saturation", (2 - saturation).toString());
       formData.append("algorithm", algorithm);
       setLoading(true);
+      let resultUrl: string | null = null;
       try {
         const res = await fetch(`${basePath}/api/process`, {
           method: "POST",
@@ -211,7 +215,6 @@ export default function Home() {
         const decoder = new TextDecoder();
         let buffer = "";
         let done = false;
-        let resultUrl: string | null = null;
         let currentEvent = "";
         while (!done) {
           const { value, done: doneReading } = await reader.read();
@@ -244,22 +247,6 @@ export default function Home() {
             }
           }
         }
-        if (resultUrl) {
-          setGroups((gs) => {
-            const copy = [...gs];
-            const settingsCopy = { ...copy[index].settings };
-            copy[index].results.push({ url: resultUrl!, settings: settingsCopy });
-            copy[index].status = "done";
-            copy[index].progress = 100;
-            return copy;
-          });
-        } else {
-          setGroups((gs) => {
-            const copy = [...gs];
-            copy[index].status = "error";
-            return copy;
-          });
-        }
       } catch (e) {
         setGroups((gs) => {
           const copy = [...gs];
@@ -268,7 +255,22 @@ export default function Home() {
         });
       }
       setLoading(false);
-      setQueue((q) => q.slice(1));
+      setQueue((q) => {
+        const newQ = q.slice(1);
+        const remaining = newQ.some((item) => item.index === index);
+        setGroups((gs) => {
+          const copy = [...gs];
+          if (resultUrl) {
+            copy[index].results.push({ url: resultUrl!, settings });
+            copy[index].progress = 100;
+            copy[index].status = remaining ? "queued" : "done";
+          } else {
+            copy[index].status = remaining ? "queued" : "error";
+          }
+          return copy;
+        });
+        return newQ;
+      });
       processingRef.current = false;
     };
     run();
@@ -449,17 +451,17 @@ export default function Home() {
             Processing Queue
           </Typography>
           <List dense disablePadding>
-            {queue.map((idx, i) => (
+            {queue.map((item, i) => (
               <ListItem key={i} sx={{ display: "block" }}>
                 <ListItemText
-                  primary={`Group ${idx + 1}`}
-                  secondary={groups[idx].status}
+                  primary={`Group ${item.index + 1}`}
+                  secondary={groups[item.index].status}
                 />
-                {i === 0 && groups[idx].status === "processing" && (
+                {i === 0 && groups[item.index].status === "processing" && (
                   <LinearProgress
                     sx={{ mt: 1 }}
                     variant="determinate"
-                    value={groups[idx].progress ?? 0}
+                    value={groups[item.index].progress ?? 0}
                   />
                 )}
               </ListItem>
