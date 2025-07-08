@@ -451,10 +451,10 @@ export default function Home() {
           <List dense disablePadding>
             {queue.map((idx, i) => (
               <ListItem key={i} sx={{ display: "block" }}>
-                <ListItemText
-                  primary={`Group ${idx + 1}`}
-                  secondary={groups[idx].status}
-                />
+                  <ListItemText
+                    primary={`Batch ${idx + 1}`}
+                    secondary={groups[idx].status}
+                  />
                 {i === 0 && groups[idx].status === "processing" && (
                   <LinearProgress
                     sx={{ mt: 1 }}
@@ -477,7 +477,7 @@ export default function Home() {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {groups[0].urls.map((src) => (
-                  <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
+                  <img key={src} src={src} className="w-16 h-16 object-cover rounded-lg" />
                 ))}
               </div>
               <div className="mt-auto pt-2 border-t border-gray-300 flex items-start justify-between gap-2">
@@ -515,9 +515,11 @@ export default function Home() {
                 </div>
               </div>
             </Paper>
-            {groups[0].results.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {groups[0].results.map((r, i) => (
+            {groups[0].results.length > 0 && (() => {
+              const i = groups[0].results.length - 1;
+              const r = groups[0].results[i];
+              return (
+                <div className="flex flex-wrap gap-2">
                   <Paper key={i} className="flex flex-col items-center gap-2 p-2" elevation={3}>
                     <Typography variant="subtitle2">HDR Result {i + 1}</Typography>
                     <img
@@ -529,9 +531,9 @@ export default function Home() {
                       <Button variant="outlined" color="secondary" size="small">Download</Button>
                     </a>
                   </Paper>
-                ))}
-              </div>
-            )}
+                </div>
+              );
+            })()}
           </div>
           {groups[0].results.length > 0 && (
             <div className="flex justify-end">
@@ -548,18 +550,20 @@ export default function Home() {
           {groups.map((g, idx) => (
             <Paper key={idx} variant="outlined" className="relative p-4 flex flex-col gap-4">
               <div className="absolute top-2 right-2">{statusIcon(g.status)}</div>
-              <h3 className="text-sm font-semibold mb-2">Group {idx + 1}</h3>
+              <h3 className="text-sm font-semibold mb-2">Batch {idx + 1}</h3>
               <div className="grid md:grid-cols-2 gap-4 flex-grow">
                 <div className="grid gap-4">
                   <div className="grid grid-cols-3 gap-2">
                     {g.urls.map((src) => (
-                      <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
+                      <img key={src} src={src} className="w-16 h-16 object-cover rounded-lg" />
                     ))}
                   </div>
                 </div>
-                {g.results.length > 0 && (
-                  <div className="flex flex-col gap-2">
-                    {g.results.map((r, j) => (
+                {g.results.length > 0 && (() => {
+                  const j = g.results.length - 1;
+                  const r = g.results[j];
+                  return (
+                    <div className="flex flex-col gap-2">
                       <Paper key={j} className="flex flex-col items-center gap-2 p-2" elevation={3}>
                         <Typography variant="subtitle2">HDR Result {j + 1}</Typography>
                         <img
@@ -571,9 +575,9 @@ export default function Home() {
                           <Button size="small" variant="outlined" color="secondary">Download</Button>
                         </a>
                       </Paper>
-                    ))}
-                  </div>
-                )}
+                    </div>
+                  );
+                })()}
               </div>
               <div className="mt-auto pt-2 border-t border-gray-300 flex items-start justify-between gap-2">
                 <div>
