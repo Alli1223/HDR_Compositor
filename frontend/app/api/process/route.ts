@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -6,7 +6,7 @@ import { spawn } from 'child_process';
 import { TextEncoder } from 'util';
 import { randomUUID } from 'crypto';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const files = formData.getAll('images') as File[];
   if (!files.length) {
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
       try {
         const src = finalPath || outputPath;
         await fs.rename(src, finalDownloadPath);
-        const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+        const basePath = (req.nextUrl as any).basePath || '';
         send('done', `${basePath}/downloads/${fileId}`);
       } catch (err: any) {
         send('error', String(err));
