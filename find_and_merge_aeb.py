@@ -1,10 +1,12 @@
 import os
+import json
 import subprocess
 import sys
 import cv2
 import numpy as np
 import warnings
 from datetime import datetime, timedelta
+from typing import Iterable, List, Tuple
 
 try:  # support running as a script or a package module
     from .hdr_utils import (
@@ -22,22 +24,33 @@ except ImportError:  # pragma: no cover - fallback for direct execution
     )
 
 
-def find_aeb_images(directory):
-    aeb_images = []
-    # List all image files in the directory
+def _run_exiftool_json(paths: Iterable[str], tags: Iterable[str]) -> list:
+    """Return exif data for *paths* as parsed JSON."""
+    if not paths:
+        return []
+    cmd = [
+        "exiftool",
+        "-json",
+        *[f"-{t}" for t in tags],
+        *paths,
+    ]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, text=True)
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return []
+
+
+def find_aeb_images(directory: str) -> List[str]:
+    """Return all image files in *directory* tagged with 'AEB'."""
     image_files = [
-        f
+        os.path.join(directory, f)
         for f in os.listdir(directory)
         if f.lower().endswith((".png", ".jpg", ".jpeg", ".tif", ".tiff"))
     ]
-    for image_file in image_files:
-        image_path = os.path.join(directory, image_file)
-        # Use exiftool to get XP Keywords tag for the image
-        cmd = f'exiftool -XPKeywords "{image_path}"'
-        result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, text=True)
-        if "aeb" in result.stdout.lower():
-            aeb_images.append(image_path)
-    return aeb_images
+    data = _run_exiftool_json(image_files, ["XPKeywords"])
+    keywords = {d.get("SourceFile"): str(d.get("XPKeywords", "")) for d in data}
+    return [p for p in image_files if "aeb" in keywords.get(p, "").lower()]
 
 
 def extract_datetime(image_path):
@@ -67,39 +80,42 @@ def group_images_by_datetime(image_paths, threshold=timedelta(seconds=2)):
     return [group for group, _ in grouped_images]
 
 
-def find_aeb_images_and_exposure_times_from_list(image_paths):
-    aeb_images = []
-    exposure_times = []
-    for image_path in image_paths:
-        # Check for 'aeb' in XP Keywords
-        keywords_cmd = f'exiftool -XPKeywords "{image_path}"'
-        keywords_result = subprocess.run(
-            keywords_cmd, shell=True, stdout=subprocess.PIPE, text=True
-        )
-        if "aeb" in keywords_result.stdout.lower():
-            aeb_images.append(image_path)
-            # Extract exposure time
-            exposure_cmd = f'exiftool -ExposureTime -b "{image_path}"'
-            exposure_result = subprocess.run(
-                exposure_cmd, shell=True, stdout=subprocess.PIPE, text=True
+def _parse_exposure(value: str) -> Tuple[bool, float]:
+    """Return (success, exposure_value) parsed from a string."""
+    value = value.strip()
+    try:
+        return True, float(value)
+    except ValueError:
+        pass
+    if "/" in value:
+        try:
+            num, den = value.split("/")
+            return True, float(num) / float(den)
+        except ValueError:
+            pass
+    return False, 0.0
+
+
+def find_aeb_images_and_exposure_times_from_list(image_paths: Iterable[str]) -> Tuple[List[str], List[float]]:
+    """Return AEB-tagged paths and their exposure times for the given list."""
+    meta = _run_exiftool_json(image_paths, ["XPKeywords", "ExposureTime"])
+    aeb_images: List[str] = []
+    exposure_times: List[float] = []
+    for entry in meta:
+        path = entry.get("SourceFile")
+        if path is None:
+            continue
+        keywords = str(entry.get("XPKeywords", "")).lower()
+        if "aeb" not in keywords:
+            continue
+        ok, value = _parse_exposure(str(entry.get("ExposureTime", "")))
+        if ok:
+            aeb_images.append(path)
+            exposure_times.append(value)
+        else:
+            print(
+                f"Warning: Could not parse exposure time for image {os.path.basename(path)} with value '{entry.get('ExposureTime', '')}'. Skipping this image."
             )
-            exposure_time_str = exposure_result.stdout.strip()
-            try:
-                # Attempt to parse the exposure time as a float directly
-                exposure_time = float(exposure_time_str)
-            except ValueError:
-                try:
-                    # Attempt to parse fractional exposure time (e.g., "1/250")
-                    numerator, denominator = exposure_time_str.split("/")
-                    exposure_time = float(numerator) / float(denominator)
-                except ValueError:
-                    # Handle images without a valid exposure time or where parsing fails
-                    print(
-                        f"Warning: Could not parse exposure time for image {os.path.basename(image_path)} with value '{exposure_time_str}'. Skipping this image."
-                    )
-                    aeb_images.pop()  # Remove the last image added since it has no valid exposure time
-                    continue  # Skip further processing for this image
-            exposure_times.append(exposure_time)
     return aeb_images, exposure_times
 
 
