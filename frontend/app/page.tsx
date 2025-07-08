@@ -570,6 +570,10 @@ export default function Home() {
           <img src={fullscreenUrl} className="max-w-full max-h-full" />
         </div>
       )}
+      <p className="text-xs text-gray-600 mt-4">
+        Uploaded images are stored on the server for up to 1 day and are then
+        automatically deleted.
+      </p>
     </main>
   );
 }

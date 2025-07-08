@@ -6,6 +6,28 @@ import { spawn } from 'child_process';
 import { TextEncoder } from 'util';
 import { randomUUID } from 'crypto';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+async function cleanupOldDownloads(dir: string) {
+  try {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const now = Date.now();
+    await Promise.all(
+      entries
+        .filter((e) => e.isFile())
+        .map(async (e) => {
+          const p = join(dir, e.name);
+          const stat = await fs.stat(p);
+          if (now - stat.mtimeMs > DAY_MS) {
+            await fs.unlink(p);
+          }
+        })
+    );
+  } catch {
+    /* ignore errors */
+  }
+}
+
 export async function POST(req: Request) {
   const formData = await req.formData();
   const files = formData.getAll('images') as File[];
@@ -32,6 +54,7 @@ export async function POST(req: Request) {
   // the path with another `frontend` segment.
   const downloadsDir = join(process.cwd(), 'public', 'downloads');
   await fs.mkdir(downloadsDir, { recursive: true });
+  await cleanupOldDownloads(downloadsDir);
   const fileId = `${randomUUID()}.jpg`;
   const finalDownloadPath = join(downloadsDir, fileId);
   const script = join(process.cwd(), '..', 'process_uploads.py');
