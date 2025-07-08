@@ -395,23 +395,30 @@ export default function Home() {
                   <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
                 ))}
               </div>
-              {renderSettings(0)}
-              <div className="mt-auto pt-2 border-t flex items-center gap-2">
-                <Button variant="contained" onClick={() => enqueueHDR(0)}>
-                  Create HDR
-                </Button>
-                {groups[0].status && groups[0].status !== "idle" && (
-                  <>
-                    <p className="text-sm">Status: {groups[0].status}</p>
-                    {groups[0].status === "processing" && (
-                      <LinearProgress
-                        sx={{ mt: 1 }}
-                        variant="determinate"
-                        value={groups[0].progress ?? 0}
-                      />
-                    )}
-                  </>
-                )}
+              <div className="mt-auto pt-2 border-t border-gray-300 flex items-start justify-between gap-2">
+                <details>
+                  <summary>
+                    <Button variant="outlined" size="small">Settings</Button>
+                  </summary>
+                  {renderSettings(0)}
+                </details>
+                <div className="flex items-center gap-2">
+                  <Button variant="contained" onClick={() => enqueueHDR(0)}>
+                    Create HDR
+                  </Button>
+                  {groups[0].status && groups[0].status !== "idle" && (
+                    <>
+                      <p className="text-sm">Status: {groups[0].status}</p>
+                      {groups[0].status === "processing" && (
+                        <LinearProgress
+                          sx={{ mt: 1 }}
+                          variant="determinate"
+                          value={groups[0].progress ?? 0}
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </Paper>
             {groups[0].results.length > 0 && (
@@ -454,12 +461,6 @@ export default function Home() {
                       <img key={src} src={src} className="w-24 h-24 object-cover rounded-lg" />
                     ))}
                   </div>
-                  <details>
-                    <summary>
-                      <Button variant="outlined" size="small">Settings</Button>
-                    </summary>
-                    {renderSettings(idx)}
-                  </details>
                 </div>
                 {g.results.length > 0 && (
                   <div className="flex flex-col gap-2">
@@ -479,22 +480,30 @@ export default function Home() {
                   </div>
                 )}
               </div>
-              <div className="mt-auto pt-2 border-t flex items-center gap-2">
-                <Button variant="contained" size="small" onClick={() => enqueueHDR(idx)}>
-                  Create HDR
-                </Button>
-                {g.status && g.status !== "idle" && (
-                  <>
-                    <p className="text-xs">Status: {g.status}</p>
-                    {g.status === "processing" && (
-                      <LinearProgress
-                        sx={{ mt: 1 }}
-                        variant="determinate"
-                        value={g.progress ?? 0}
-                      />
-                    )}
-                  </>
-                )}
+              <div className="mt-auto pt-2 border-t border-gray-300 flex items-start justify-between gap-2">
+                <details>
+                  <summary>
+                    <Button variant="outlined" size="small">Settings</Button>
+                  </summary>
+                  {renderSettings(idx)}
+                </details>
+                <div className="flex items-center gap-2">
+                  <Button variant="contained" size="small" onClick={() => enqueueHDR(idx)}>
+                    Create HDR
+                  </Button>
+                  {g.status && g.status !== "idle" && (
+                    <>
+                      <p className="text-xs">Status: {g.status}</p>
+                      {g.status === "processing" && (
+                        <LinearProgress
+                          sx={{ mt: 1 }}
+                          variant="determinate"
+                          value={g.progress ?? 0}
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </Paper>
           ))}
