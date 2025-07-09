@@ -11,6 +11,7 @@ import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
+import Tooltip from "@mui/material/Tooltip";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
@@ -41,6 +42,7 @@ type Group = {
   settings: Settings;
   status?: "idle" | "queued" | "processing" | "done" | "error";
   progress?: number;
+  errorMessage?: string;
 };
 
 type Algo = "mantiuk" | "reinhard" | "drago";
@@ -58,8 +60,8 @@ export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState<Record<number, boolean>>({});
   const processingRef = useRef(false);
 
-  const statusIcon = (status?: Group["status"]) => {
-    switch (status) {
+  const statusIcon = (g: Group) => {
+    switch (g.status) {
       case "queued":
         return <HourglassEmptyIcon fontSize="small" color="action" />;
       case "processing":
@@ -73,7 +75,11 @@ export default function Home() {
       case "done":
         return <CheckCircleIcon fontSize="small" color="success" />;
       case "error":
-        return <ErrorIcon fontSize="small" color="error" />;
+        return (
+          <Tooltip title={g.errorMessage || "Error"}>
+            <ErrorIcon fontSize="small" color="error" />
+          </Tooltip>
+        );
       default:
         return null;
     }
@@ -119,6 +125,7 @@ export default function Home() {
           },
           status: "idle",
           progress: 0,
+          errorMessage: undefined,
         };
         newGroups.push(group);
       }
@@ -155,6 +162,7 @@ export default function Home() {
       if (copy[index].status !== "processing") {
         copy[index].status = "queued";
         copy[index].progress = 0;
+        copy[index].errorMessage = undefined;
       }
       return copy;
     });
@@ -276,6 +284,7 @@ export default function Home() {
         let done = false;
         let resultUrl: string | null = null;
         let currentEvent = "";
+        let errorMsg = "";
         while (!done) {
           const { value, done: doneReading } = await reader.read();
           done = doneReading;
@@ -303,6 +312,8 @@ export default function Home() {
               } else if (currentEvent === "done") {
                 // Server returns a relative download URL
                 resultUrl = valueStr;
+              } else if (currentEvent === "error") {
+                errorMsg += valueStr + "\n";
               }
             }
           }
@@ -320,6 +331,7 @@ export default function Home() {
           setGroups((gs) => {
             const copy = [...gs];
             copy[index].status = "error";
+            copy[index].errorMessage = errorMsg.trim() || "Unknown error";
             return copy;
           });
         }
@@ -327,6 +339,7 @@ export default function Home() {
         setGroups((gs) => {
           const copy = [...gs];
           copy[index].status = "error";
+          copy[index].errorMessage = String(e);
           return copy;
         });
       }
@@ -553,7 +566,7 @@ export default function Home() {
           <div className="grid md:grid-cols-2 gap-4">
             <Paper className="relative p-4 flex flex-col gap-4" elevation={3}>
               <div className="absolute top-2 right-2">
-                {statusIcon(matched[0].g.status)}
+                {statusIcon(matched[0].g)}
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {matched[0].g.urls.map((src, i) => (
@@ -652,7 +665,7 @@ export default function Home() {
         <div className="w-full max-w-3xl grid gap-4 md:grid-cols-2">
           {matched.map(({ g, idx }) => (
             <Paper key={idx} variant="outlined" className="relative p-4 flex flex-col gap-4">
-              <div className="absolute top-2 right-2">{statusIcon(g.status)}</div>
+              <div className="absolute top-2 right-2">{statusIcon(g)}</div>
               <h3 className="text-sm font-semibold mb-2">Batch {idx + 1}</h3>
               <div className="grid md:grid-cols-2 gap-4 flex-grow">
                 <div className="grid gap-4">
