@@ -78,8 +78,11 @@ def tonemap(
     enhanced = enhance_image(ldr_8bit, reference_image)
 
     # Preserve extremely bright highlights that the tonemapper might tone down
-    bright_threshold = 0.98
-    highlight_mask = hdr_norm.max(axis=2) >= bright_threshold
+    # Use a percentile-based threshold so that bright spots like the sun remain
+    # white even if they are not the absolute maximum in the HDR image.
+    luminance = cv2.cvtColor(hdr_norm, cv2.COLOR_BGR2GRAY)
+    bright_threshold = np.quantile(luminance, 0.995)
+    highlight_mask = luminance >= bright_threshold
     enhanced[highlight_mask] = [255, 255, 255]
     return enhanced
 
