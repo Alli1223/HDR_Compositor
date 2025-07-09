@@ -1,4 +1,4 @@
-.PHONY: run gui
+.PHONY: run gui package-linux package-windows
 
 run:
 	docker build -f Dockerfile.web -t hdr-webapp .
@@ -9,6 +9,14 @@ run:
 
 # Launch the desktop HDR compositor GUI
 gui:
-	python hdr_gui.py
+        python hdr_gui.py
+
+# Build a standalone binary for Linux using PyInstaller
+package-linux:
+        pyinstaller --onefile hdr_gui.py --name hdr_compositor
+
+# Display Windows packaging instructions
+package-windows:
+        @echo "Run 'pyinstaller --onefile hdr_gui.py --name hdr_compositor' on a Windows machine"
 
 

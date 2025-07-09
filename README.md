@@ -74,6 +74,36 @@ pip install -r requirements.txt
 
 The tools rely on `opencv-python-headless`, `numpy` and `dearpygui` in addition to `exiftool`. On Debian based systems you can install exiftool with `apt-get install exiftool`.
 
+### Building Executables
+
+Self-contained binaries of the desktop GUI can be created with [PyInstaller](https://www.pyinstaller.org/).
+
+Install PyInstaller:
+
+```bash
+pip install pyinstaller
+```
+
+#### Linux
+
+Run the following command to produce a standalone executable:
+
+```bash
+pyinstaller --onefile hdr_gui.py --name hdr_compositor
+```
+
+The binary `dist/hdr_compositor` can then be executed directly.
+
+#### Windows
+
+PyInstaller does not cross compile, so building a Windows executable requires running the command on a Windows system:
+
+```bash
+pyinstaller --onefile hdr_gui.py --name hdr_compositor
+```
+
+This creates `dist/hdr_compositor.exe` which launches the GUI without needing Python installed.
+
 ### Release Process
 
 Tagged commits with names starting with `v` trigger an automated workflow.
