@@ -23,3 +23,21 @@ def test_reference_highlight_preserved():
     ref = imgs[1]
     ldr = tonemap_mantiuk(hdr, ref)
     assert ldr[0, 0].mean() >= 250
+
+
+def test_large_bright_area_preserved():
+    imgs = []
+    vals = [40, 80, 160]
+    for i, val in enumerate(vals):
+        img = np.full((8, 8, 3), val, dtype=np.uint8)
+        if i == 0:
+            cv2.circle(img, (4, 4), 2, (255, 255, 255), -1)
+        imgs.append(img)
+    times = [1.0, 0.5, 0.25]
+    hdr = create_hdr(imgs, times)
+    ref = imgs[1]
+    ldr = tonemap_mantiuk(hdr, ref)
+    center = ldr[4, 4].mean()
+    neighbour = ldr[4, 3].mean()
+    assert center >= 250
+    assert neighbour >= 250
