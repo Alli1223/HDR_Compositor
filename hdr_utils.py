@@ -79,8 +79,11 @@ def tonemap(
     ldr_8bit = np.clip(ldr * 255, 0, 255).astype("uint8")
 
     enhanced = enhance_image(ldr_8bit, reference_image)
-    highlight_mask = ldr_8bit.max(axis=2) >= 250
-    enhanced[highlight_mask] = [255, 255, 255]
+    highlight_mask = ldr_8bit.max(axis=2) >= 240
+    if np.any(highlight_mask):
+        kernel = np.ones((3, 3), np.uint8)
+        highlight_mask = cv2.dilate(highlight_mask.astype(np.uint8), kernel, iterations=1) > 0
+        enhanced[highlight_mask] = [255, 255, 255]
     return enhanced
 
 
